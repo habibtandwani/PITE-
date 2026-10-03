@@ -1,0 +1,2984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Training Information System & Admin Panel</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QR Code generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <!-- External Export Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Supabase client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .th-custom {
+            background-color: #d9e1f2;
+            color: #1e293b;
+        }
+
+        .selected-row {
+            background-color: #e0e7ff !important;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .modal-active {
+            display: flex !important;
+        }
+
+        .protected-header-control {
+            display: none !important;
+        }
+
+        .protected-header-control.authenticated {
+            display: flex !important;
+        }
+
+        @media print {
+            body {
+                background: white;
+                color: black;
+                font-size: 10pt;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .table-container {
+                overflow: visible !important;
+            }
+            table {
+                width: 100% !important;
+                border-collapse: collapse;
+            }
+            th, td {
+                border: 1px solid #000 !important;
+                padding: 4px !important;
+                font-size: 8pt !important;
+            }
+        }
+    </style>
+</head>
+<body class="text-gray-800 pb-12">
+
+    <!-- Header Section -->
+    <header class="bg-slate-800 text-white shadow-md no-print mb-6">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-blue-600 rounded-lg text-white">
+                    <i class="fa-solid fa-graduation-cap text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold leading-tight">PITE Balochistan, Quetta</h1>
+                    <p class="text-xs text-slate-300">Teacher Training Information System</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2.5 flex-wrap justify-center">
+                <div id="authGuestButtons" class="flex items-center gap-2">
+                    <button onclick="openAuthModal('signin')" class="bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-right-to-bracket"></i> User Sign In
+                    </button>
+                    <button onclick="openAuthModal('signup')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-user-plus"></i> User Sign Up
+                    </button>
+                </div>
+
+                <!-- Admin login is always visible and separate from user authentication -->
+                <button id="adminSignInButton" onclick="openAdminSignIn()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow flex items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-user-shield"></i> Admin Sign In
+                </button>
+
+                <div id="authUserBox" class="hidden items-center gap-2 bg-slate-700 px-2 py-1.5 rounded-lg">
+                    <div class="h-7 w-7 rounded-full bg-blue-600 flex items-center justify-center text-white">
+                        <i class="fa-solid fa-user text-xs"></i>
+                    </div>
+                    <span id="authUserName" class="text-xs font-semibold text-white max-w-[150px] truncate"></span>
+                    <button onclick="signOutUser()" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold px-2.5 py-1.5 rounded-md transition-all" title="Sign out">
+                        <i class="fa-solid fa-right-from-bracket"></i> Sign Out
+                    </button>
+                </div>
+
+                <button id="adminAccessButton" onclick="openAdminModal()" class="protected-header-control bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow flex items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-user-shield"></i> Admin Panel
+                    <span id="admin_badge_count" class="bg-white text-rose-700 rounded-full px-1.5 py-0.2 text-[10px] font-bold">0</span>
+                    <span id="admin_pending_user_count" class="bg-amber-300 text-amber-950 rounded-full px-1.5 py-0.2 text-[10px] font-bold">0</span>
+                </button>
+                <div id="sessionStatusBox" class="protected-header-control flex items-center gap-2 text-xs bg-slate-700 px-3 py-2 rounded-lg">
+                    <i class="fa-solid fa-database text-emerald-400"></i>
+                    <span>Status: <strong class="text-emerald-400">Active Session</strong></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main id="protectedApp" class="max-w-7xl mx-auto px-4 space-y-6" style="display:none;">
+
+        <!-- Training Overview Form -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 transition-all">
+            <div class="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+                <h2 class="text-md font-bold text-gray-700 flex items-center gap-2">
+                    <i class="fa-solid fa-clipboard-list text-blue-600"></i> Training Overview & Venue Information
+                </h2>
+                <span class="text-xs font-semibold px-2.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                    Header Details
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-6 gap-4 text-xs font-medium">
+                <div class="md:col-span-6 grid grid-cols-1 md:grid-cols-6 items-center gap-2">
+                    <label class="md:col-span-1 font-bold text-gray-700">Training Title:</label>
+                    <input type="text" id="hdr_title" value="" class="md:col-span-5 w-full bg-slate-50 border border-gray-300 rounded-md px-3 py-2 text-gray-800 font-semibold focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none">
+                </div>
+
+                <div class="md:col-span-4 grid grid-cols-1 md:grid-cols-4 items-center gap-2">
+                    <label class="md:col-span-1 font-bold text-gray-700">Training Venue:</label>
+                    <input type="text" id="hdr_venue" value="" class="md:col-span-3 w-full bg-slate-50 border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none">
+                </div>
+                <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-3 items-center gap-2">
+                    <label class="md:col-span-1 font-bold text-gray-700 md:text-right">District:</label>
+                    <input type="text" id="hdr_district" value="" class="md:col-span-2 w-full bg-slate-50 border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none">
+                </div>
+
+                <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-3 items-center gap-2">
+                    <label class="md:col-span-1 font-bold text-gray-700">Center Type:</label>
+                    <select id="hdr_center" class="md:col-span-2 w-full bg-slate-50 border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none">
+                        <option value="Male/Female" selected>Male / Female (Combined)</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-3 items-center gap-2">
+                    <label class="md:col-span-1 font-bold text-gray-700 md:text-right">Date From:</label>
+                    <input type="text" id="hdr_date_from" value="" class="md:col-span-2 w-full bg-slate-50 border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none">
+                </div>
+                <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-3 items-center gap-2">
+                    <label class="md:col-span-1 font-bold text-gray-700 md:text-right">Date To:</label>
+                    <input type="text" id="hdr_date_to" value="" class="md:col-span-2 w-full bg-slate-50 border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none">
+                </div>
+
+                <div class="md:col-span-3 grid grid-cols-1 md:grid-cols-3 items-center gap-2">
+                    <label class="md:col-span-2 font-bold text-gray-700">Total Teachers Nominated:</label>
+                    <input type="number" id="hdr_nom" value="" class="md:col-span-1 w-full bg-slate-50 border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none" oninput="updateStatistics()">
+                </div>
+                <div class="md:col-span-3 grid grid-cols-1 md:grid-cols-3 items-center gap-2">
+                    <label class="md:col-span-2 font-bold text-gray-700 md:text-right">Total Teachers Trained:</label>
+                    <input type="number" id="hdr_trained" value="" class="md:col-span-1 w-full bg-slate-50 border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none">
+                </div>
+
+                <div class="md:col-span-6 grid grid-cols-1 md:grid-cols-6 items-center gap-2 pt-1">
+                    <label class="md:col-span-2 font-bold text-gray-700">Master Trainers (Name, Designation, Org):</label>
+                    <input type="text" id="hdr_trainers" value="" class="md:col-span-4 w-full bg-slate-50 border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none">
+                </div>
+            </div>
+        </section>
+
+        <!-- Record CRUD Form -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div class="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+                <h2 class="text-md font-bold text-gray-700 flex items-center gap-2">
+                    <i class="fa-solid fa-user-pen text-emerald-600"></i> Manage Teacher Entry
+                </h2>
+                <span id="form_mode_badge" class="text-xs font-semibold px-2.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
+                    Mode: New Record
+                </span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">S. No *</label>
+                    <input type="text" id="f_sno" class="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">Name</label>
+                    <input type="text" id="f_name" class="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">Gender</label>
+                    <select id="f_gender" class="w-full border border-gray-300 rounded px-2 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <option value="Female">Female</option>
+                        <option value="Male">Male</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">Father Name</label>
+                    <input type="text" id="f_father" class="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">Designation</label>
+                    <input type="text" id="f_designation" class="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">School</label>
+                    <input type="text" id="f_school" class="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">BEMIS Code</label>
+                    <input type="text" id="f_bemis" placeholder="e.g. 102938" class="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">Union Council</label>
+                    <input type="text" id="f_uc" class="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">District</label>
+                    <input type="text" id="f_district" class="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">CNIC Number</label>
+                    <input type="text" id="f_cnic" placeholder="55402xxxxxx" class="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">Date of Birth</label>
+                    <input type="text" id="f_dob" placeholder="DD/MM/YYYY" class="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">Appt Date</label>
+                    <input type="text" id="f_appt" placeholder="DD/MM/YYYY" class="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">Contact No</label>
+                    <input type="text" id="f_contact" placeholder="03xx..." class="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">Pre Test</label>
+                    <input type="number" min="0" id="f_pre" class="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">Post Test</label>
+                    <input type="number" min="0" id="f_post" class="w-full border border-gray-300 rounded px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2 mt-4 pt-3 border-t border-gray-100">
+                <button onclick="addRecord()" style="background-color: #4CAF50;" class="hover:opacity-90 text-white font-semibold px-4 py-2 rounded shadow-sm text-xs flex items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-plus"></i> Add Record
+                </button>
+                <button onclick="updateRecord()" style="background-color: #2196F3;" class="hover:opacity-90 text-white font-semibold px-4 py-2 rounded shadow-sm text-xs flex items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-pen-to-square"></i> Update Selected
+                </button>
+                <button onclick="deleteRecord()" style="background-color: #f44336;" class="hover:opacity-90 text-white font-semibold px-4 py-2 rounded shadow-sm text-xs flex items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-trash"></i> Delete Selected
+                </button>
+                <button onclick="clearEntries()" style="background-color: #9E9E9E;" class="hover:opacity-90 text-white font-semibold px-4 py-2 rounded shadow-sm text-xs flex items-center gap-1.5 transition-all">
+                    <i class="fa-solid fa-eraser"></i> Clear Form
+                </button>
+            </div>
+        </section>
+
+        <!-- System Operations Toolbar -->
+        <section class="bg-slate-900 text-white rounded-xl p-4 shadow-md no-print">
+            <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-2 text-sm font-semibold">
+                    <i class="fa-solid fa-sliders text-amber-400 text-lg"></i>
+                    <span>Toolbar & Operations</span>
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <label style="background-color: #8B5CF6;" class="hover:opacity-90 text-white font-semibold px-3.5 py-2 rounded shadow-sm cursor-pointer flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-image"></i> Upload Pictures
+                        <input type="file" id="picture_input_toolbar_send" accept="image/*" multiple class="hidden" onchange="sendPicturesFromToolbar(event)">
+                    </label>
+
+                    <label style="background-color: #EC4899;" class="hover:opacity-90 text-white font-semibold px-3.5 py-2 rounded shadow-sm cursor-pointer flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-video"></i> Upload Videos
+                        <input type="file" id="video_input_toolbar" accept="video/*" multiple class="hidden" onchange="uploadVideosFromToolbar(event)">
+                    </label>
+
+                    <button onclick="generateMediaQR()" style="background-color: #7C3AED;" class="hover:opacity-90 text-white font-bold px-4 py-2 rounded shadow-sm flex items-center gap-1.5 transition-all" title="Generate QR code for uploaded pictures and videos">
+                        <i class="fa-solid fa-qrcode"></i> Media QR Code
+                    </button>
+
+                    <label style="background-color: #F59E0B;" class="hover:opacity-90 text-white font-semibold px-3.5 py-2 rounded shadow-sm cursor-pointer flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-clipboard-user"></i> Upload Attendance Sheet
+                        <input type="file" id="attendance_input_toolbar" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" multiple class="hidden" onchange="uploadAttendanceSheetsFromToolbar(event)">
+                    </label>
+
+                    <button onclick="submitDataToAdmin()" style="background-color: #059669;" class="hover:opacity-90 text-white font-bold px-4 py-2 rounded shadow-sm flex items-center gap-1.5 transition-all animate-pulse" title="Send teacher records, pictures, videos and attendance sheets to the Admin Panel">
+                        <i class="fa-solid fa-paper-plane"></i> Submit All to Admin
+                    </button>
+
+                    <button onclick="openDashboardModal()" style="background-color: #6366F1;" class="hover:opacity-90 text-white font-semibold px-3.5 py-2 rounded shadow-sm flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-chart-line text-sm"></i> Dashboard
+                    </button>
+
+                    <button onclick="connectToServer()" style="background-color: #4F46E5;" class="hover:opacity-90 text-white font-medium px-3 py-2 rounded shadow-sm flex items-center gap-1 transition-all">
+                        <i class="fa-solid fa-server"></i> Connect to Server
+                    </button>
+
+                    <label style="background-color: #0284C7;" class="hover:opacity-90 text-white font-medium px-3 py-2 rounded shadow-sm cursor-pointer flex items-center gap-1">
+                        <i class="fa-solid fa-images"></i> Insert Pictures
+                        <input type="file" id="picture_input_toolbar" accept="image/*" multiple class="hidden" onchange="insertTrainingPictures(event)">
+                    </label>
+
+                    <button onclick="toggleAutoSave()" id="autosave_btn" style="background-color: #D97706;" class="hover:opacity-90 text-white font-medium px-3 py-2 rounded shadow-sm flex items-center gap-1 transition-all ring-2 ring-amber-400/50">
+                        <i class="fa-solid fa-rotate animate-spin-slow"></i> <span id="autosave_label">Auto Save: ON</span>
+                    </button>
+
+                    <button onclick="saveData()" style="background-color: #FF9800;" class="hover:opacity-90 text-white font-medium px-3 py-2 rounded shadow-sm flex items-center gap-1">
+                        <i class="fa-solid fa-floppy-disk"></i> Save Data
+                    </button>
+                    
+                    <label style="background-color: #009688;" class="hover:opacity-90 text-white font-medium px-3 py-2 rounded shadow-sm cursor-pointer flex items-center gap-1">
+                        <i class="fa-solid fa-folder-open"></i> Load Previous
+                        <input type="file" id="json_file_input" accept=".json" class="hidden" onchange="loadPreviousSavedData(event)">
+                    </label>
+
+                    <button onclick="confirmResetNextTraining()" style="background-color: #673AB7;" class="hover:opacity-90 text-white font-medium px-3 py-2 rounded shadow-sm flex items-center gap-1">
+                        <i class="fa-solid fa-rotate-left"></i> Start Next Training
+                    </button>
+
+                    <span class="border-r border-slate-700 h-6 mx-1 hidden sm:inline-block"></span>
+
+                    <button onclick="exportToWord()" style="background-color: #2B579A;" class="hover:opacity-90 text-white font-medium px-3 py-2 rounded shadow-sm flex items-center gap-1">
+                        <i class="fa-solid fa-file-word"></i> Word Doc
+                    </button>
+
+                    <button onclick="exportToPDF()" style="background-color: #B31412;" class="hover:opacity-90 text-white font-medium px-3 py-2 rounded shadow-sm flex items-center gap-1">
+                        <i class="fa-solid fa-file-pdf"></i> Export PDF
+                    </button>
+
+                    <button onclick="exportToExcel()" style="background-color: #1E7145;" class="hover:opacity-90 text-white font-medium px-3 py-2 rounded shadow-sm flex items-center gap-1">
+                        <i class="fa-solid fa-file-excel"></i> Excel
+                    </button>
+
+                    <span class="border-r border-slate-700 h-6 mx-1 hidden sm:inline-block"></span>
+
+                    <button onclick="shareWordViaWhatsApp()" style="background-color: #128C7E;" class="hover:opacity-90 text-white font-medium px-3 py-2 rounded shadow-sm flex items-center gap-1">
+                        <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Word
+                    </button>
+
+                    <button onclick="sharePDFViaWhatsApp()" style="background-color: #25D366;" class="hover:opacity-90 text-white font-medium px-3 py-2 rounded shadow-sm flex items-center gap-1">
+                        <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp PDF
+                    </button>
+
+                    <button onclick="sendToGmail()" style="background-color: #EA4335;" class="hover:opacity-90 text-white font-medium px-3 py-2 rounded shadow-sm flex items-center gap-1">
+                        <i class="fa-solid fa-envelope"></i> Send to Gmail
+                    </button>
+
+                    <button onclick="window.print()" class="bg-gray-700 hover:bg-gray-600 text-white font-medium px-3 py-2 rounded shadow-sm flex items-center gap-1">
+                        <i class="fa-solid fa-print"></i> Print
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Records Table & Analytics -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-gray-100 pb-3 mb-4">
+                <div>
+                    <h2 class="text-md font-bold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-table text-indigo-600"></i> Teacher Records Directory
+                    </h2>
+                    <p class="text-xs text-gray-500">Click any row to edit details. Double-check scores for evaluation accuracy.</p>
+                </div>
+                <div class="flex items-center gap-3 text-xs">
+                    <span class="bg-indigo-50 text-indigo-700 font-semibold px-2.5 py-1 rounded border border-indigo-200">
+                        Total Enrolled: <span id="record_count">0</span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="table-container overflow-x-auto border border-gray-200 rounded-lg max-h-[500px] overflow-y-auto">
+                <table id="teacherTable" class="w-full text-left text-xs whitespace-nowrap border-collapse">
+                    <thead class="sticky top-0 z-10">
+                        <tr class="th-custom text-gray-800 font-bold border-b border-gray-300">
+                            <th class="p-2.5 text-center border-r border-gray-300">S. No</th>
+                            <th class="p-2.5 border-r border-gray-300">Name</th>
+                            <th class="p-2.5 text-center border-r border-gray-300">Gender</th>
+                            <th class="p-2.5 border-r border-gray-300">Father Name</th>
+                            <th class="p-2.5 text-center border-r border-gray-300">Designation</th>
+                            <th class="p-2.5 border-r border-gray-300">School</th>
+                            <th class="p-2.5 border-r border-gray-300">BEMIS Code</th>
+                            <th class="p-2.5 border-r border-gray-300">Union Council</th>
+                            <th class="p-2.5 border-r border-gray-300">District</th>
+                            <th class="p-2.5 text-center border-r border-gray-300">CNIC Number</th>
+                            <th class="p-2.5 text-center border-r border-gray-300">Date of Birth</th>
+                            <th class="p-2.5 text-center border-r border-gray-300">Appt Date</th>
+                            <th class="p-2.5 text-center border-r border-gray-300">Contact Number</th>
+                            <th class="p-2.5 text-center border-r border-gray-300 bg-amber-100 text-amber-900">Pre Test</th>
+                            <th class="p-2.5 text-center bg-emerald-100 text-emerald-900">Post Test</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-gray-200 bg-white">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-3 border-t border-gray-100 text-xs">
+                <div class="bg-gray-50 border border-gray-200 p-2.5 rounded-lg text-center">
+                    <span class="text-gray-500 block">Avg Pre-Test Score</span>
+                    <strong id="stat_avg_pre" class="text-sm font-bold text-amber-600">0 / 20</strong>
+                </div>
+                <div class="bg-gray-50 border border-gray-200 p-2.5 rounded-lg text-center">
+                    <span class="text-gray-500 block">Avg Post-Test Score</span>
+                    <strong id="stat_avg_post" class="text-sm font-bold text-emerald-600">0 / 20</strong>
+                </div>
+                <div class="bg-gray-50 border border-gray-200 p-2.5 rounded-lg text-center">
+                    <span class="text-gray-500 block">Avg Score Gain</span>
+                    <strong id="stat_gain" class="text-sm font-bold text-blue-600">+0 pts</strong>
+                </div>
+                <div class="bg-gray-50 border border-gray-200 p-2.5 rounded-lg text-center">
+                    <span class="text-gray-500 block">Completion Status</span>
+                    <strong id="stat_completion" class="text-sm font-bold text-purple-600">0%</strong>
+                </div>
+            </div>
+        </section>
+
+        <!-- Media QR Code Section -->
+        <section id="mediaQrSection" class="bg-white rounded-xl shadow-sm border border-violet-200 p-5 hidden">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h2 class="text-md font-bold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-qrcode text-violet-600"></i> Uploaded Media QR Code
+                    </h2>
+                    <p class="text-xs text-gray-500">The QR identifies the uploaded picture/video package. The actual media remains attached to the Admin submission.</p>
+                </div>
+                <div class="flex gap-2 no-print">
+                    <button onclick="downloadMediaQR()" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-semibold px-3 py-2 rounded shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-download"></i> Download QR
+                    </button>
+                    <button onclick="document.getElementById('mediaQrSection').classList.add('hidden')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-2 rounded">Close</button>
+                </div>
+            </div>
+            <div class="mt-4 flex flex-col md:flex-row items-center gap-5">
+                <div id="mediaQrCode" class="bg-white p-3 border rounded-lg shadow-sm"></div>
+                <div id="mediaQrInfo" class="text-xs text-gray-600 space-y-1"></div>
+            </div>
+        </section>
+
+        <!-- Media & Documents Gallery Section -->
+        <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 space-y-6">
+            <div>
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-gray-100 pb-3 mb-4">
+                    <div>
+                        <h2 class="text-md font-bold text-gray-700 flex items-center gap-2">
+                            <i class="fa-solid fa-camera-retro text-sky-600"></i> Training Pictures Gallery
+                        </h2>
+                        <p class="text-xs text-gray-500">Upload photos captured during training sessions for reporting.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label style="background-color: #0284C7;" class="hover:opacity-90 text-white text-xs font-semibold px-3 py-2 rounded shadow-sm cursor-pointer flex items-center gap-1.5 transition-all no-print">
+                            <i class="fa-solid fa-file-image"></i> Insert Training Pictures
+                            <input type="file" id="picture_input_section" accept="image/*" multiple class="hidden" onchange="insertTrainingPictures(event)">
+                        </label>
+                        <button onclick="clearAllPictures()" class="bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 text-xs font-semibold px-3 py-2 rounded shadow-sm flex items-center gap-1 transition-all no-print">
+                            <i class="fa-solid fa-trash-can"></i> Clear All
+                        </button>
+                    </div>
+                </div>
+
+                <div id="picturesGallery" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 min-h-[120px]">
+                    <div id="emptyGalleryMsg" class="col-span-full text-center py-8 text-gray-400 text-xs border-2 border-dashed border-gray-200 rounded-lg">
+                        <i class="fa-regular fa-image text-3xl mb-2 text-gray-300 block"></i>
+                        No training pictures inserted yet. Click <strong>"Insert Pictures"</strong> to upload photos.
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-gray-100 pb-3 mb-4">
+                    <div>
+                        <h2 class="text-md font-bold text-gray-700 flex items-center gap-2">
+                            <i class="fa-solid fa-video text-pink-600"></i> Training Videos
+                        </h2>
+                        <p class="text-xs text-gray-500">Video recordings and media submissions.</p>
+                    </div>
+                </div>
+
+                <div id="videosGallery" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 min-h-[100px]">
+                    <div id="emptyVideosMsg" class="col-span-full text-center py-6 text-gray-400 text-xs border-2 border-dashed border-gray-200 rounded-lg">
+                        <i class="fa-solid fa-film text-3xl mb-2 text-gray-300 block"></i>
+                        No training videos uploaded yet.
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-gray-100 pb-3 mb-4">
+                    <div>
+                        <h2 class="text-md font-bold text-gray-700 flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-user text-amber-600"></i> Attendance Sheets
+                        </h2>
+                        <p class="text-xs text-gray-500">Scanned files and attendance sheet documents.</p>
+                    </div>
+                </div>
+
+                <div id="attendanceList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 min-h-[80px]">
+                    <div id="emptyAttendanceMsg" class="col-span-full text-center py-6 text-gray-400 text-xs border-2 border-dashed border-gray-200 rounded-lg">
+                        <i class="fa-solid fa-file-circle-check text-3xl mb-2 text-gray-300 block"></i>
+                        No attendance sheets uploaded yet.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+
+
+    <!-- User Authentication Modal -->
+    <div id="authModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
+        <div id="authCard" class="bg-white rounded-2xl w-full max-w-md max-h-[92vh] shadow-2xl overflow-hidden transition-all duration-200 flex flex-col">
+            <div id="authHeader" class="bg-gradient-to-r from-slate-800 to-blue-700 px-6 py-5 text-white flex-none">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 id="authModalTitle" class="text-lg font-bold">Sign In</h3>
+                        <p id="authModalSubtitle" class="text-xs text-blue-100 mt-1">Access your training information account</p>
+                    </div>
+                    <button id="authCloseBtn" type="button" onclick="closeAuthModal()" aria-label="Close Sign Up" title="Close" class="h-10 w-10 rounded-full bg-white/15 hover:bg-white/30 border border-white/20 flex items-center justify-center text-white text-lg font-bold transition-all">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <form id="authForm" onsubmit="handleAuthSubmit(event)" class="p-6 space-y-4 overflow-y-auto">
+                <div id="authNameField">
+                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">Full Name</label>
+                    <input id="authName" type="text" autocomplete="name" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your full name">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">Email Address</label>
+                    <input id="authEmail" type="email" autocomplete="email" required class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="you@example.com">
+                </div>
+
+                <div id="authPhoneField">
+                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">Registered Phone Number</label>
+                    <input id="authPhone" type="tel" autocomplete="tel" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="+92xxxxxxxxxx">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">Password</label>
+                    <input id="authPassword" type="password" minlength="6" required class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Minimum 6 characters">
+                </div>
+
+                <div id="authConfirmField">
+                    <label class="block text-xs font-semibold text-gray-700 mb-1.5">Confirm Password</label>
+                    <input id="authConfirm" type="password" minlength="6" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Re-enter your password">
+                </div>
+
+                <p id="authError" class="hidden text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2"></p>
+
+                <button id="authSubmitBtn" type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg shadow-sm transition-all">
+                    Sign In
+                </button>
+
+                <button id="userForgotBtn" type="button" onclick="showUserForgot()" class="w-full text-blue-600 hover:text-blue-700 text-xs font-semibold">
+                    Forgot Password? Send OTP to Registered Email / Phone
+                </button>
+
+                <div id="userForgotView" class="hidden border-t border-gray-200 pt-4 space-y-3">
+                    <div class="text-xs font-bold text-gray-700">Password Recovery</div>
+                    <input id="userRecoveryContact" type="text" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" placeholder="Registered email or phone number">
+                    <button type="button" onclick="requestUserOTP()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg">
+                        <i class="fa-solid fa-paper-plane"></i> Send / Prepare OTP
+                    </button>
+                    <p id="userOtpNotice" class="hidden text-xs rounded-lg px-3 py-2"></p>
+                    <div id="userOtpVerifyBox" class="hidden space-y-3">
+                        <input id="userOtpInput" type="text" inputmode="numeric" maxlength="6" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" placeholder="6-digit OTP">
+                        <input id="userNewPassword" type="password" minlength="6" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" placeholder="New password">
+                        <input id="userNewPasswordConfirm" type="password" minlength="6" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" placeholder="Confirm new password">
+                        <button type="button" onclick="resetUserPasswordWithOTP()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg">
+                            Change Password
+                        </button>
+                    </div>
+                    <button type="button" onclick="hideUserForgot()" class="text-xs text-gray-500 hover:text-gray-800">← Back to Sign In</button>
+                </div>
+
+                <p class="text-center text-xs text-gray-500">
+                    <span id="authSwitchText">Don't have an account?</span>
+                    <button id="authSwitchBtn" type="button" onclick="switchAuthMode()" class="text-blue-600 hover:text-blue-700 font-bold ml-1">Sign Up</button>
+                </p>
+
+                <button id="authBackBtn" type="button" onclick="goBackFromAuth()" class="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-2 rounded-lg transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Back</span>
+                </button>
+                <p class="text-[10px] text-gray-400 text-center">
+                    Demo authentication stores account details in this browser only.
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 ease-in-out pointer-events-none">
+        <div id="toast_content" class="bg-slate-800 text-white px-4 py-3 rounded-lg shadow-xl text-xs flex items-center gap-3 border border-slate-700">
+            <i id="toast_icon" class="fa-solid fa-circle-info text-blue-400 text-base"></i>
+            <span id="toast_msg">Notification message</span>
+        </div>
+    </div>
+
+    <!-- Reset Confirmation Modal -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center gap-3 text-amber-600">
+                <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+                <h3 class="text-lg font-bold text-gray-800">Confirm Reset</h3>
+            </div>
+            <p class="text-xs text-gray-600 leading-relaxed">
+                Are you sure you want to start a new training dataset?<br>
+                <strong>All current records, header fields, media, and uploaded pictures will be wiped.</strong> Make sure to save your work first!
+            </p>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg text-xs font-semibold">Cancel</button>
+                <button onclick="executeResetNextTraining()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold">Yes, Reset All</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Executive Dashboard Modal -->
+    <div id="dashboardModal" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 overflow-y-auto backdrop-blur-sm">
+        <div class="bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white rounded-2xl max-w-5xl w-full p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto border border-purple-500/30">
+            <div class="flex items-center justify-between border-b border-purple-500/30 pb-4">
+                <div class="flex items-center gap-3">
+                    <div class="p-3 bg-gradient-to-tr from-pink-500 to-purple-600 rounded-2xl shadow-lg shadow-pink-500/30 text-white">
+                        <i class="fa-solid fa-chart-pie text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-300">Executive Dashboard & Analytics Overview</h3>
+                        <p class="text-xs text-purple-200/70">Real-time colorful statistics & progress summary</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="deleteAllDashboardEntries()" class="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-lg shadow-red-600/30 flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-trash-can"></i> Delete All Entries
+                    </button>
+                    <button onclick="closeDashboardModal()" class="text-purple-300 hover:text-white bg-white/10 hover:bg-white/20 rounded-full h-9 w-9 flex items-center justify-center transition-all">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-gradient-to-br from-blue-600/30 to-cyan-600/30 border border-cyan-400/30 rounded-2xl p-4 text-center shadow-lg backdrop-blur-md">
+                    <span class="text-xs font-bold text-cyan-300 uppercase tracking-wide block mb-1">Total Enrolled</span>
+                    <strong id="dash_total" class="text-2xl font-black text-white">0</strong>
+                </div>
+                <div class="bg-gradient-to-br from-amber-600/30 to-orange-600/30 border border-amber-400/30 rounded-2xl p-4 text-center shadow-lg backdrop-blur-md">
+                    <span class="text-xs font-bold text-amber-300 uppercase tracking-wide block mb-1">Avg Pre-Test</span>
+                    <strong id="dash_pre" class="text-2xl font-black text-white">0 / 20</strong>
+                </div>
+                <div class="bg-gradient-to-br from-emerald-600/30 to-teal-600/30 border border-emerald-400/30 rounded-2xl p-4 text-center shadow-lg backdrop-blur-md">
+                    <span class="text-xs font-bold text-emerald-300 uppercase tracking-wide block mb-1">Avg Post-Test</span>
+                    <strong id="dash_post" class="text-2xl font-black text-white">0 / 20</strong>
+                </div>
+                <div class="bg-gradient-to-br from-purple-600/30 to-fuchsia-600/30 border border-fuchsia-400/30 rounded-2xl p-4 text-center shadow-lg backdrop-blur-md">
+                    <span class="text-xs font-bold text-fuchsia-300 uppercase tracking-wide block mb-1">Average Gain</span>
+                    <strong id="dash_gain" class="text-2xl font-black text-white">+0 pts</strong>
+                </div>
+            </div>
+
+            <div class="border border-purple-500/30 bg-white/5 backdrop-blur-md rounded-2xl p-4 space-y-3">
+                <h4 class="font-bold text-pink-300 text-xs uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-users text-pink-400"></i> Teacher Roster Overview
+                </h4>
+                <div class="overflow-x-auto max-h-60 border border-purple-500/20 rounded-xl">
+                    <table class="w-full text-left text-[11px] whitespace-nowrap text-purple-100">
+                        <thead class="bg-gradient-to-r from-purple-900 to-indigo-900 text-pink-200 font-bold border-b border-purple-500/30">
+                            <tr>
+                                <th class="p-2.5 text-center">S. No</th>
+                                <th class="p-2.5">Name</th>
+                                <th class="p-2.5 text-center">Gender</th>
+                                <th class="p-2.5">Designation</th>
+                                <th class="p-2.5">School</th>
+                                <th class="p-2.5 text-center">BEMIS Code</th>
+                                <th class="p-2.5">District</th>
+                                <th class="p-2.5 text-center">CNIC</th>
+                                <th class="p-2.5 text-center">Contact No</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash_teachers_tbody" class="divide-y divide-purple-500/10 bg-slate-900/40">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2 border-t border-purple-500/30">
+                <button onclick="closeDashboardModal()" class="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-600/30 transition-all">
+                    Close Dashboard
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Authentication Modal -->
+    <div id="adminAuthModal" class="fixed inset-0 bg-slate-950/85 z-[60] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div class="flex items-center gap-3 mb-5">
+                <div class="p-2.5 bg-rose-600 rounded-xl text-white"><i class="fa-solid fa-user-shield text-xl"></i></div>
+                <div><h3 id="adminAuthTitle" class="text-lg font-bold text-gray-800">Admin Sign In</h3><p id="adminAuthSubtitle" class="text-xs text-gray-500">Authorized administrator access only</p></div>
+            </div>
+            <div id="adminLoginView">
+                <form onsubmit="handleAdminLogin(event)" class="space-y-3">
+                    <div><label class="block text-xs font-semibold text-gray-700 mb-1">Admin Username / Email</label><input id="adminLoginEmail" type="email" required class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"></div>
+                    <div><label class="block text-xs font-semibold text-gray-700 mb-1">Admin Password</label><input id="adminLoginPassword" type="password" required class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"></div>
+                    <p id="adminAuthError" class="hidden text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2"></p>
+                    <button type="submit" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 rounded-lg">Sign In to Admin Panel</button>
+                </form>
+                <div class="flex justify-between items-center mt-4 text-xs">
+                    <button onclick="showAdminForgot()" class="text-rose-600 font-semibold hover:underline">Forgot Admin Password?</button>
+                    <button onclick="closeAdminAuthModal()" class="text-gray-500 hover:text-gray-800">Cancel</button>
+                </div>
+                <button type="button" onclick="goBackFromAdminAuth()" class="w-full mt-3 border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-2.5 rounded-lg transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    Go Back to Main Page
+                </button>
+            </div>
+            <div id="adminForgotView" class="hidden space-y-3">
+                <div><label class="block text-xs font-semibold text-gray-700 mb-1">Recovery Email</label><input id="adminRecoveryEmail" type="email" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"></div>
+                <div><label class="block text-xs font-semibold text-gray-700 mb-1">Recovery Phone (optional)</label><input id="adminRecoveryPhone" type="tel" placeholder="+92xxxxxxxxxx" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"></div>
+                <button onclick="requestAdminOTP()" type="button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg"><i class="fa-solid fa-paper-plane"></i> Generate Recovery OTP</button>
+                <p id="adminOtpNotice" class="hidden text-xs bg-amber-50 text-amber-800 border border-amber-200 rounded-lg px-3 py-2"></p>
+                <div id="adminOtpVerifyBox" class="hidden space-y-3">
+                    <div><label class="block text-xs font-semibold text-gray-700 mb-1">Enter OTP</label><input id="adminOtpInput" type="text" inputmode="numeric" maxlength="6" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm" placeholder="6-digit OTP"></div>
+                    <div><label class="block text-xs font-semibold text-gray-700 mb-1">New Admin Password</label><input id="adminNewPassword" type="password" minlength="6" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"></div>
+                    <div><label class="block text-xs font-semibold text-gray-700 mb-1">Confirm New Password</label><input id="adminNewPasswordConfirm" type="password" minlength="6" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm"></div>
+                    <button onclick="resetAdminPasswordWithOTP()" type="button" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-lg">Change Admin Password</button>
+                </div>
+                <button onclick="showAdminLogin()" type="button" class="text-xs text-gray-500 hover:text-gray-800">← Back to Admin Sign In</button>
+                <button type="button" onclick="goBackFromAdminAuth()" class="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-2.5 rounded-lg transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    Go Back to Main Page
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Panel Modal -->
+    <div id="adminModal" class="fixed inset-0 bg-slate-900/80 z-50 hidden items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-6xl w-full p-6 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-gray-200 pb-4">
+                <div class="flex items-center gap-3">
+                    <div class="p-2.5 bg-rose-600 rounded-xl text-white">
+                        <i class="fa-solid fa-user-shield text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800">Administrator Control Panel</h3>
+                        <p class="text-xs text-gray-500">Review, inspect, export documents, and manage submissions from main application page</p>
+                    </div>
+                </div>
+                <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full h-8 w-8 flex items-center justify-center transition-all">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="bg-slate-800 text-white p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-inner">
+                <div class="flex items-center gap-2 text-xs font-bold">
+                    <i class="fa-solid fa-terminal text-amber-400"></i> Admin Panel Actions:
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <button onclick="refreshAdminPanel()" type="button" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-rotate"></i> Refresh Panel
+                    </button>
+                    <button onclick="updateAdminSync()" type="button" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-arrows-rotate"></i> Update / Sync Records
+                    </button>
+                    <button onclick="openAdminDashboard()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 transition-all" type="button">
+                        <i class="fa-solid fa-chart-line"></i> Dashboard
+                    </button>
+                    <button onclick="clearAllSubmissions()" type="button" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 transition-all" type="button">
+                        <i class="fa-solid fa-trash-can"></i> Delete All Submissions
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-slate-100 p-3 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-700">
+                    <i class="fa-solid fa-gears text-rose-600"></i> Admin Document & File Operations:
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <button onclick="adminExportPDF()" type="button" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-file-pdf"></i> Export PDF
+                    </button>
+
+                    <button onclick="adminExportWordLandscape()" type="button" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-3 py-1.5 rounded shadow-sm flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-file-word"></i> Export Word Doc (Landscape)
+                    </button>
+
+                    <label class="bg-amber-600 hover:bg-amber-700 text-white font-semibold px-3 py-1.5 rounded shadow-sm cursor-pointer flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-file-arrow-up"></i> Receive PDF File
+                        <input type="file" id="admin_receive_pdf_input" accept=".pdf" class="hidden" onchange="adminReceivePDF(event)">
+                    </label>
+
+                    <label class="bg-cyan-700 hover:bg-cyan-800 text-white font-semibold px-3 py-1.5 rounded shadow-sm cursor-pointer flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-file-word"></i> Receive Word File
+                        <input type="file" id="admin_receive_word_input" accept=".doc,.docx" class="hidden" onchange="adminReceiveWord(event)">
+                    </label>
+                </div>
+            </div>
+
+            <div class="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-chart-bar text-rose-600"></i> Trained Teachers Dashboard (All Districts & Designations)
+                    </h4>
+                    <span id="admin_dash_total_teachers" class="bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded text-[11px]">Total: 0 Teachers</span>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 space-y-2">
+                        <h5 class="text-xs font-bold text-slate-700 border-b pb-1"><i class="fa-solid fa-map-location-dot text-blue-600"></i> Breakdown by District</h5>
+                        <div class="max-h-40 overflow-y-auto">
+                            <table class="w-full text-left text-[11px]">
+                                <thead class="bg-slate-100 font-bold">
+                                    <tr>
+                                        <th class="p-2">District</th>
+                                        <th class="p-2 text-center">Trained Teachers</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin_district_tbody" class="divide-y divide-gray-100">
+                                    <tr><td colspan="2" class="p-2 text-center text-gray-400">No data available</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-3 rounded-lg border border-slate-200 space-y-2">
+                        <h5 class="text-xs font-bold text-slate-700 border-b pb-1"><i class="fa-solid fa-id-badge text-emerald-600"></i> Breakdown by Designation</h5>
+                        <div class="max-h-40 overflow-y-auto">
+                            <table class="w-full text-left text-[11px]">
+                                <thead class="bg-slate-100 font-bold">
+                                    <tr>
+                                        <th class="p-2">Designation</th>
+                                        <th class="p-2 text-center">Trained Teachers</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin_designation_tbody" class="divide-y divide-gray-100">
+                                    <tr><td colspan="2" class="p-2 text-center text-gray-400">No data available</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="adminUserAccountsSection" class="border border-rose-200 rounded-xl p-4 bg-rose-50/40 space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-user-check text-rose-600"></i> User Accounts & Approval
+                        </h4>
+                        <p class="text-[11px] text-slate-500">New users remain Pending until an administrator approves them.</p>
+                    </div>
+                    <span id="pending_user_badge" class="bg-amber-100 text-amber-800 font-bold px-2.5 py-1 rounded text-[11px]">Pending: 0</span>
+                </div>
+                <div class="border border-slate-200 rounded-lg overflow-hidden bg-white">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                            <tr>
+                                <th class="p-3">Name</th>
+                                <th class="p-3">Email</th>
+                                <th class="p-3">Phone</th>
+                                <th class="p-3">Registered</th>
+                                <th class="p-3 text-center">Status</th>
+                                <th class="p-3 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminUsersTableBody" class="divide-y divide-gray-200">
+                            <tr><td colspan="6" class="p-5 text-center text-gray-400">No registered users yet.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="adminReceivedFilesSection" class="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-3">
+                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-folder-closed text-amber-500"></i> Received Files Registry (PDFs & Word Docs)
+                </h4>
+                <div id="adminReceivedFilesList" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                    <p class="text-gray-400 col-span-full text-center py-2">No user PDF or Word documents received yet.</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <h4 class="text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-inbox text-blue-600"></i> Submitted Reports Queue (<span id="admin_sub_count">0</span>)
+                    </h4>
+                    <button onclick="clearAllSubmissions()" type="button" class="bg-rose-50 text-rose-600 hover:bg-rose-100 text-xs font-semibold px-3 py-1.5 rounded border border-rose-200 transition-all">
+                        <i class="fa-solid fa-trash-can"></i> Clear All Submissions
+                    </button>
+                </div>
+
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-100 text-slate-700 font-bold border-b border-gray-200">
+                            <tr>
+                                <th class="p-3">Timestamp</th>
+                                <th class="p-3">Training Title / District</th>
+                                <th class="p-3 text-center">Venue</th>
+                                <th class="p-3 text-center">Enrolled</th>
+                                <th class="p-3 text-center">Pictures</th>
+                                <th class="p-3 text-center">Videos</th>
+                                <th class="p-3 text-center">Attendance Sheets</th>
+                                <th class="p-3 text-center">Media QR</th>
+                                <th class="p-3 text-center">Status</th>
+                                <th class="p-3 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminSubmissionsTableBody" class="divide-y divide-gray-200 bg-white">
+                            <tr>
+                                <td colspan="9" class="p-6 text-center text-gray-400">No submissions received yet from main page.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="adminInspector" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                    <h5 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-magnifying-glass-chart text-rose-600"></i> Submission Details Inspector
+                    </h5>
+                    <button onclick="closeInspector()" class="text-gray-500 hover:text-gray-800 text-xs font-bold">Close Inspector</button>
+                </div>
+                
+                <div id="inspectorContent" class="text-xs space-y-4">
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-2 border-t border-gray-100">
+                <button onclick="closeAdminModal()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold shadow-sm transition-all">
+                    Close Admin Panel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedRowIndex = null;
+        let trainingPictures = [];
+        let trainingVideos = [];
+        let attendanceSheets = [];
+        let currentMediaQR = null;
+        let receivedAdminFiles = [];
+        let autoSaveActive = true;
+        let autoSaveInterval = null;
+
+        // ---------------- Supabase ----------------
+        // Paste your values from Supabase > Project Settings > API.
+        // The anon key is safe here ONLY because Row Level Security is enabled (see supabase_setup.sql).
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function isAdminUser(u) { return !!(u && u.app_metadata && u.app_metadata.role === 'admin'); }
+
+        // Validates a signed-in teacher against their profile (must be Approved) and caches name for the UI.
+        async function applySessionUser(user) {
+            if (isAdminUser(user)) return 'admin';
+            const { data, error } = await sb.from('profiles').select('name,status').eq('id', user.id).single();
+            if (error || !data) { await sb.auth.signOut(); return 'error'; }
+            if (data.status !== 'Approved') { await sb.auth.signOut(); return 'pending'; }
+            localStorage.setItem('teacher_training_current_user', JSON.stringify({ name: data.name || user.email, email: user.email }));
+            return 'ok';
+        }
+
+        // Admin only: pull all submissions and users from Supabase into the local cache the panel renders from.
+        async function loadCloudData() {
+            const { data: { user } } = await sb.auth.getUser();
+            const [subs, profs] = await Promise.all([
+                sb.from('submissions').select('id,status,payload,created_at').order('created_at', { ascending: false }),
+                sb.from('profiles').select('*').neq('id', user.id).order('created_at', { ascending: false })
+            ]);
+            if (subs.error) throw subs.error;
+            if (profs.error) throw profs.error;
+            localStorage.setItem('admin_submissions', JSON.stringify(subs.data.map(r => Object.assign({}, r.payload, { id: r.id, status: r.status }))));
+            saveAuthUsers(profs.data.map(p => ({ id: p.id, name: p.name, email: p.email, phone: p.phone, status: p.status, createdAt: p.created_at })));
+            updateAdminBadge();
+            updateAdminUserBadge();
+        }
+
+        // Upload a base64 data URL to Storage and return its public URL.
+        async function uploadDataUrl(dataUrl, folder) {
+            if (!dataUrl || !dataUrl.startsWith('data:')) return dataUrl;
+            const blob = await (await fetch(dataUrl)).blob();
+            let ext = (blob.type.split('/')[1] || 'bin').split('+')[0];
+            if (ext.length > 5) ext = 'bin';
+            const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+            const { error } = await sb.storage.from('media').upload(path, blob, { contentType: blob.type });
+            if (error) throw error;
+            return sb.storage.from('media').getPublicUrl(path).data.publicUrl;
+        }
+
+        // Restore session on page load; handle the password-reset email link.
+        sb.auth.getSession().then(async ({ data: { session } }) => {
+            if (!session || isAdminUser(session.user)) localStorage.removeItem('teacher_training_current_user');
+            else if (await applySessionUser(session.user) !== 'ok') localStorage.removeItem('teacher_training_current_user');
+            updateAuthUI();
+        });
+        sb.auth.onAuthStateChange((event) => {
+            if (event !== 'PASSWORD_RECOVERY') return;
+            setTimeout(async () => {
+                const next = prompt('Enter your new password (minimum 6 characters):');
+                if (next && next.length >= 6) {
+                    const { error } = await sb.auth.updateUser({ password: next });
+                    showToast(error ? error.message : 'Password changed. Please sign in.', error ? 'error' : 'success');
+                }
+                await sb.auth.signOut();
+                localStorage.removeItem('teacher_training_current_user');
+                updateAuthUI();
+            }, 0);
+        });
+
+        // ---------------- User Sign Up / Sign In ----------------
+        let authMode = 'signin';
+
+        function getAuthUsers() {
+            try {
+                const users = JSON.parse(localStorage.getItem('teacher_training_users') || '[]');
+                // Accounts created by older versions predate approval. Preserve access for
+                // those existing accounts while all new accounts are Pending.
+                let changed = false;
+                users.forEach(u => {
+                    if (!u.status) { u.status = 'Approved'; changed = true; }
+                    if (!u.createdAt) { u.createdAt = new Date().toISOString(); changed = true; }
+                });
+                if (changed) localStorage.setItem('teacher_training_users', JSON.stringify(users));
+                return users;
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveAuthUsers(users) {
+            localStorage.setItem('teacher_training_users', JSON.stringify(users));
+        }
+
+        function openAuthModal(mode = 'signin') {
+            authMode = mode;
+            updateAuthModal();
+            const modal = document.getElementById('authModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                const first = mode === 'signup'
+                    ? document.getElementById('authName')
+                    : document.getElementById('authEmail');
+                first.focus();
+            }, 50);
+        }
+
+        function goBackFromAuth() {
+            closeAuthModal();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function closeAuthModal() {
+            const modal = document.getElementById('authModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.getElementById('authForm').reset();
+            hideAuthError();
+        }
+
+        function switchAuthMode() {
+            authMode = authMode === 'signin' ? 'signup' : 'signin';
+            updateAuthModal();
+            hideAuthError();
+        }
+
+        function updateAuthModal() {
+            const signup = authMode === 'signup';
+            document.getElementById('authModalTitle').textContent = signup ? 'Create Account' : 'Sign In';
+
+            const authCard = document.getElementById('authCard');
+            const authHeader = document.getElementById('authHeader');
+            const authForm = document.getElementById('authForm');
+
+            if (authCard) {
+                authCard.classList.toggle('max-w-xs', signup);
+                authCard.classList.toggle('max-w-md', !signup);
+            }
+            if (authHeader) {
+                authHeader.classList.toggle('px-4', signup);
+                authHeader.classList.toggle('py-3', signup);
+                authHeader.classList.toggle('px-6', !signup);
+                authHeader.classList.toggle('py-5', !signup);
+            }
+            if (authForm) {
+                authForm.classList.toggle('p-3', signup);
+                authForm.classList.toggle('space-y-2', signup);
+                authForm.classList.toggle('p-6', !signup);
+                authForm.classList.toggle('space-y-4', !signup);
+            }
+
+            // Compact the Sign Up fields/buttons so the top-right X stays visible
+            // even on shorter laptop or mobile screens.
+            ['authName','authEmail','authPhone','authPassword','authConfirm'].forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.classList.toggle('py-2', signup);
+                    input.classList.toggle('py-2.5', !signup);
+                }
+            });
+            ['authSubmitBtn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.classList.toggle('py-2', signup);
+                    btn.classList.toggle('py-2.5', !signup);
+                }
+            });
+
+            const closeBtn = document.getElementById('authCloseBtn');
+            if (closeBtn) {
+                closeBtn.setAttribute('aria-label', signup ? 'Close Sign Up' : 'Close Sign In');
+                closeBtn.setAttribute('title', signup ? 'Close Sign Up' : 'Close Sign In');
+                closeBtn.classList.toggle('h-9', signup);
+                closeBtn.classList.toggle('w-9', signup);
+                closeBtn.classList.toggle('h-10', !signup);
+                closeBtn.classList.toggle('w-10', !signup);
+            }
+
+            const backBtn = document.getElementById('authBackBtn');
+            if (backBtn) {
+                backBtn.classList.toggle('py-1.5', signup);
+                backBtn.classList.toggle('py-2', !signup);
+            }
+            document.getElementById('authModalSubtitle').textContent = signup
+                ? 'Create an account to access your training information'
+                : 'Access your training information account';
+            document.getElementById('authNameField').classList.toggle('hidden', !signup);
+            document.getElementById('authConfirmField').classList.toggle('hidden', !signup);
+            document.getElementById('authPhoneField').classList.toggle('hidden', !signup);
+            document.getElementById('authName').required = signup;
+            document.getElementById('authPhone').required = signup;
+            document.getElementById('authConfirm').required = signup;
+            document.getElementById('userForgotBtn').classList.toggle('hidden', signup);
+            document.getElementById('userForgotView').classList.add('hidden');
+            document.getElementById('authSubmitBtn').textContent = signup ? 'Create Account' : 'Sign In';
+            document.getElementById('authSwitchText').textContent = signup
+                ? 'Already have an account?'
+                : "Don't have an account?";
+            document.getElementById('authSwitchBtn').textContent = signup ? 'Sign In' : 'Sign Up';
+        }
+
+        function showAuthError(message) {
+            const el = document.getElementById('authError');
+            el.textContent = message;
+            el.classList.remove('hidden');
+        }
+
+        function hideAuthError() {
+            document.getElementById('authError').classList.add('hidden');
+        }
+
+        async function handleAuthSubmit(event) {
+            event.preventDefault();
+            hideAuthError();
+
+            const email = document.getElementById('authEmail').value.trim().toLowerCase();
+            const password = document.getElementById('authPassword').value;
+
+            if (authMode === 'signup') {
+                const name = document.getElementById('authName').value.trim();
+                const phone = document.getElementById('authPhone').value.trim();
+                const confirm = document.getElementById('authConfirm').value;
+
+                if (name.length < 2) { showAuthError('Please enter your full name.'); return; }
+                if (!phone) { showAuthError('Please enter your registered phone number.'); return; }
+                if (password.length < 6) { showAuthError('Password must contain at least 6 characters.'); return; }
+                if (password !== confirm) { showAuthError('Passwords do not match.'); return; }
+
+                const { error } = await sb.auth.signUp({ email, password, options: { data: { name, phone } } });
+                if (error) { showAuthError(error.message); return; }
+                await sb.auth.signOut(); // new accounts stay signed out until the Admin approves them
+                closeAuthModal();
+                updateAuthUI();
+                showToast('Account created. Please wait for Admin approval before signing in.', 'success');
+            } else {
+                const { data, error } = await sb.auth.signInWithPassword({ email, password });
+                if (error) { showAuthError('Incorrect email or password.'); return; }
+                const result = await applySessionUser(data.user);
+                if (result === 'pending') { showAuthError('Your account is pending Admin approval. Please contact the administrator.'); return; }
+                if (result === 'admin') { await sb.auth.signOut(); showAuthError('Please use the Admin Sign In button.'); return; }
+                if (result !== 'ok') { showAuthError('Could not load your account. Please try again.'); return; }
+                closeAuthModal();
+                updateAuthUI();
+                showToast(`Welcome back, ${getCurrentUser().name}!`, 'success');
+            }
+        }
+
+        function showUserForgot() {
+            document.getElementById('userForgotView').classList.remove('hidden');
+            document.getElementById('userForgotBtn').classList.add('hidden');
+            document.getElementById('authPassword').required = false;
+            document.getElementById('authConfirm').required = false;
+        }
+
+        function hideUserForgot() {
+            document.getElementById('userForgotView').classList.add('hidden');
+            document.getElementById('userForgotBtn').classList.remove('hidden');
+            document.getElementById('authPassword').required = true;
+        }
+
+        async function requestUserOTP() {
+            const email = document.getElementById('userRecoveryContact').value.trim().toLowerCase();
+            const notice = document.getElementById('userOtpNotice');
+            notice.classList.remove('hidden');
+            if (!email.includes('@')) {
+                notice.textContent = 'Please enter your registered email address.';
+                notice.className = 'text-xs rounded-lg px-3 py-2 bg-rose-50 text-rose-700 border border-rose-200';
+                return;
+            }
+            const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+            notice.textContent = error ? error.message : 'A password reset link has been sent to your email. Open it to choose a new password.';
+            notice.className = 'text-xs rounded-lg px-3 py-2 ' + (error ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200');
+        }
+
+        function resetUserPasswordWithOTP() {
+            showToast('Please use the reset link sent to your email.', 'info');
+        }
+
+        function renderAdminUsersTable() {
+            const users = getAuthUsers();
+            const tbody = document.getElementById('adminUsersTableBody');
+            const pending = users.filter(u => (u.status || 'Approved') === 'Pending').length;
+            const badge = document.getElementById('pending_user_badge');
+            if (badge) badge.textContent = `Pending: ${pending}`;
+            if (!tbody) return;
+
+            if (!users.length) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-5 text-center text-gray-400">No registered users yet.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = users.map((u, idx) => {
+                const status = u.status || 'Approved';
+                const statusClass = status === 'Approved'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-amber-100 text-amber-800';
+                const action = status === 'Approved'
+                    ? `<button onclick="setUserApproval(${idx}, 'Pending')" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded text-[10px] font-semibold">Revoke</button>`
+                    : `<button onclick="setUserApproval(${idx}, 'Approved')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-[10px] font-semibold">Approve</button>`;
+                return `<tr>
+                    <td class="p-3 font-semibold">${u.name || ''}</td>
+                    <td class="p-3">${u.email || ''}</td>
+                    <td class="p-3">${u.phone || '—'}</td>
+                    <td class="p-3">${u.createdAt ? new Date(u.createdAt).toLocaleString() : '—'}</td>
+                    <td class="p-3 text-center"><span class="px-2 py-1 rounded text-[10px] font-bold ${statusClass}">${status}</span></td>
+                    <td class="p-3 text-center">${action}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function setUserApproval(index, status) {
+            const users = getAuthUsers();
+            const u = users[index];
+            if (!u) return;
+            const { error } = await sb.from('profiles').update({ status }).eq('id', u.id);
+            if (error) { showToast('Could not update user: ' + error.message, 'error'); return; }
+            u.status = status;
+            saveAuthUsers(users);
+            renderAdminUsersTable();
+            updateAdminUserBadge();
+            showToast(status === 'Approved' ? 'User approved successfully.' : 'User approval revoked.', 'success');
+        }
+
+        function updateAdminUserBadge() {
+            const pending = getAuthUsers().filter(u => (u.status || 'Approved') === 'Pending').length;
+            const badge = document.getElementById('pending_user_badge');
+            if (badge) badge.textContent = `Pending: ${pending}`;
+            const topBadge = document.getElementById('admin_pending_user_count');
+            if (topBadge) topBadge.textContent = pending;
+        }
+
+        function updateAuthUI() {
+            const currentUser = getCurrentUser();
+            const guest = document.getElementById('authGuestButtons');
+            const userBox = document.getElementById('authUserBox');
+            const userName = document.getElementById('authUserName');
+            const protectedApp = document.getElementById('protectedApp');
+            const adminAccess = document.getElementById('adminAccessButton');
+            const statusBox = document.getElementById('sessionStatusBox');
+
+            if (currentUser && currentUser.name) {
+                guest.classList.add('hidden');
+                userBox.classList.remove('hidden');
+                userBox.classList.add('flex');
+                userName.textContent = currentUser.name;
+                protectedApp.style.display = '';
+                adminAccess.classList.add('authenticated');
+                statusBox.classList.add('authenticated');
+            } else {
+                guest.classList.remove('hidden');
+                userBox.classList.add('hidden');
+                userBox.classList.remove('flex');
+                protectedApp.style.display = 'none';
+                adminAccess.classList.remove('authenticated');
+                statusBox.classList.remove('authenticated');
+                closeAdminModal();
+                closeAdminAuthModal();
+            }
+        }
+
+        async function signOutUser() {
+            await sb.auth.signOut();
+            localStorage.removeItem('teacher_training_current_user');
+            closeAdminModal();
+            closeAdminAuthModal();
+            updateAuthUI();
+            showToast('You have been signed out.', 'success');
+        }
+
+        const fields = [
+            "sno", "name", "gender", "father", "designation", "school", "bemis",
+            "uc", "district", "cnic", "dob", "appt", "contact", "pre", "post"
+        ];
+
+        let tableData = [];
+
+        // One-time cleanup for this blank-data version.
+        // Removes previously stored training/admin data from this browser.
+        (function clearAllPreviouslyStoredTrainingData() {
+            const resetKey = 'ttis_all_training_data_removed_v3';
+            if (localStorage.getItem(resetKey) !== '1') {
+                [
+                    'teacher_training_autosave_data',
+                    'admin_submissions'
+                ].forEach(key => localStorage.removeItem(key));
+                localStorage.setItem(resetKey, '1');
+            }
+        })();
+
+        window.onload = function() {
+            renderTable();
+            updateStatistics();
+            renderGallery();
+            renderVideosGallery();
+            renderAttendanceList();
+            updateAdminBadge();
+            renderReceivedFilesList();
+            renderAdminUsersTable();
+            updateAdminUserBadge();
+            updateAuthUI();
+            initAutoSave();
+        };
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast_msg');
+            const iconEl = document.getElementById('toast_icon');
+
+            msgEl.textContent = message;
+
+            if (type === 'success') {
+                iconEl.className = 'fa-solid fa-circle-check text-emerald-400 text-base';
+            } else if (type === 'error') {
+                iconEl.className = 'fa-solid fa-circle-xmark text-rose-400 text-base';
+            } else if (type === 'warning') {
+                iconEl.className = 'fa-solid fa-triangle-exclamation text-amber-400 text-base';
+            } else {
+                iconEl.className = 'fa-solid fa-circle-info text-blue-400 text-base';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function initAutoSave() {
+            autoSaveInterval = setInterval(() => {
+                if (autoSaveActive) {
+                    performAutoSave(true);
+                }
+            }, 30000);
+        }
+
+        function toggleAutoSave() {
+            autoSaveActive = !autoSaveActive;
+            const btnLabel = document.getElementById('autosave_label');
+            const btn = document.getElementById('autosave_btn');
+            
+            if (autoSaveActive) {
+                btnLabel.textContent = "Auto Save: ON";
+                btn.style.backgroundColor = "#D97706";
+                showToast("Auto Save enabled (every 30s).", "success");
+            } else {
+                btnLabel.textContent = "Auto Save: OFF";
+                btn.style.backgroundColor = "#6B7280";
+                showToast("Auto Save disabled.", "info");
+            }
+        }
+
+        function performAutoSave(isSilent = false) {
+            const dataPayload = {
+                header: getHeaderData(),
+                records: tableData,
+                pictures: trainingPictures,
+                videos: trainingVideos,
+                attendance: attendanceSheets,
+                lastSaved: new Date().toISOString()
+            };
+            localStorage.setItem('teacher_training_autosave_data', JSON.stringify(dataPayload));
+            if (!isSilent) {
+                showToast("Data auto-saved successfully to local storage!", "success");
+            }
+        }
+
+        function deleteAllDashboardEntries() {
+            if (!confirm("Are you sure you want to delete ALL entries? This action cannot be undone.")) return;
+            tableData = [];
+            renderTable();
+            updateStatistics();
+            clearEntries();
+            if (document.getElementById('dashboardModal').classList.contains('modal-active')) {
+                updateDashboardMetrics();
+                renderDashboardTeachersTable();
+            }
+            showToast("All dashboard entries deleted successfully.", "success");
+        }
+
+        function sendPicturesFromToolbar(event) {
+            const files = Array.from(event.target.files);
+            if (!files || files.length === 0) return;
+
+            let loadedCount = 0;
+            files.forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    trainingPictures.push({
+                        id: Date.now() + Math.random(),
+                        dataUrl: e.target.result,
+                        caption: file.name.replace(/\.[^/.]+$/, "")
+                    });
+                    loadedCount++;
+                    if (loadedCount === files.length) {
+                        renderGallery();
+                        showToast(`Uploaded ${loadedCount} picture(s)!`, "success");
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        }
+
+        function uploadVideosFromToolbar(event) {
+            const files = Array.from(event.target.files);
+            if (!files || files.length === 0) return;
+
+            let loadedCount = 0;
+            files.forEach(file => {
+                if (!file.type.startsWith('video/')) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    trainingVideos.push({
+                        id: Date.now() + Math.random(),
+                        dataUrl: e.target.result,
+                        name: file.name
+                    });
+                    loadedCount++;
+                    if (loadedCount === files.length) {
+                        renderVideosGallery();
+                        showToast(`Uploaded ${loadedCount} video(s)!`, "success");
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        }
+
+        function uploadAttendanceSheetsFromToolbar(event) {
+            const files = Array.from(event.target.files);
+            if (!files || files.length === 0) return;
+
+            let loadedCount = 0;
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    attendanceSheets.push({
+                        id: Date.now() + Math.random(),
+                        dataUrl: e.target.result,
+                        name: file.name,
+                        type: file.type
+                    });
+                    loadedCount++;
+                    if (loadedCount === files.length) {
+                        renderAttendanceList();
+                        showToast(`Uploaded ${loadedCount} attendance sheet(s)!`, "success");
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        }
+
+        function createMediaQRPayload(submissionId) {
+            const payload = {
+                app: 'TTIS',
+                version: 1,
+                submissionId,
+                createdAt: new Date().toISOString(),
+                media: {
+                    pictures: (trainingPictures || []).map(x => ({ id: x.id, name: x.caption || 'Picture' })),
+                    videos: (trainingVideos || []).map(x => ({ id: x.id, name: x.name || 'Video' }))
+                }
+            };
+            return JSON.stringify(payload);
+        }
+
+        function generateMediaQR(submissionId = null) {
+            const pictures = trainingPictures || [];
+            const videos = trainingVideos || [];
+            if (pictures.length === 0 && videos.length === 0) {
+                showToast('Upload at least one picture or video before generating the QR code.', 'warning');
+                return null;
+            }
+
+            const id = submissionId || ('DRAFT-' + Date.now());
+            const qrPayload = createMediaQRPayload(id);
+            const box = document.getElementById('mediaQrCode');
+            const section = document.getElementById('mediaQrSection');
+            box.innerHTML = '';
+            new QRCode(box, {
+                text: qrPayload,
+                width: 190,
+                height: 190,
+                correctLevel: QRCode.CorrectLevel.M
+            });
+            document.getElementById('mediaQrInfo').innerHTML = `
+                <div><strong>Package ID:</strong> ${id}</div>
+                <div><strong>Pictures:</strong> ${pictures.length}</div>
+                <div><strong>Videos:</strong> ${videos.length}</div>
+                <div class="pt-2 text-gray-500">Scan this QR to read the media package identifier and manifest. The Admin Panel receives the actual uploaded files with the submission.</div>`;
+            section.classList.remove('hidden');
+            currentMediaQR = { id, payload: qrPayload };
+            showToast('Media QR code generated successfully.', 'success');
+            return qrPayload;
+        }
+
+        function downloadMediaQR() {
+            const img = document.querySelector('#mediaQrCode img');
+            const canvas = document.querySelector('#mediaQrCode canvas');
+            if (!img && !canvas) {
+                showToast('Generate the Media QR code first.', 'warning');
+                return;
+            }
+            const src = img ? img.src : canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = src;
+            a.download = `Training_Media_QR_${currentMediaQR?.id || 'package'}.png`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        function createSubmissionQRDataURL(submission) {
+            const holder = document.createElement('div');
+            holder.style.position = 'fixed';
+            holder.style.left = '-10000px';
+            holder.style.top = '0';
+            document.body.appendChild(holder);
+            new QRCode(holder, {
+                text: submission.mediaQR,
+                width: 220,
+                height: 220,
+                correctLevel: QRCode.CorrectLevel.M
+            });
+            const canvas = holder.querySelector('canvas');
+            const img = holder.querySelector('img');
+            const data = canvas ? canvas.toDataURL('image/png') : (img ? img.src : '');
+            holder.remove();
+            return data;
+        }
+
+        async function submitDataToAdmin() {
+            const header = getHeaderData();
+            if (!header.title || !header.title.trim()) {
+                showToast("Training title cannot be empty.", "warning");
+                return;
+            }
+            const { data: { user } } = await sb.auth.getUser();
+            if (!user) { showToast("Please sign in again before submitting.", "error"); return; }
+
+            try {
+                showToast("Uploading files, please wait...", "info");
+                const up = (arr, folder) => Promise.all((arr || []).map(async it =>
+                    Object.assign({}, it, { dataUrl: await uploadDataUrl(it.dataUrl, `${user.id}/${folder}`) })));
+                const [pictures, videos, attendance] = await Promise.all([
+                    up(trainingPictures, 'pictures'), up(trainingVideos, 'videos'), up(attendanceSheets, 'attendance')
+                ]);
+
+                const submissionId = 'SUB-' + Date.now();
+                const submission = {
+                    id: submissionId,
+                    timestamp: new Date().toLocaleString(),
+                    header: JSON.parse(JSON.stringify(header)),
+                    records: JSON.parse(JSON.stringify(tableData || [])),
+                    pictures, videos, attendance,
+                    status: 'Pending Review',
+                    submittedBy: 'Main Training Page',
+                    mediaSummary: { pictures: pictures.length, videos: videos.length, attendance: attendance.length },
+                    mediaQR: createMediaQRPayload(submissionId),
+                    mediaQRImage: ''
+                };
+                submission.mediaQRImage = createSubmissionQRDataURL(submission);
+
+                const { error } = await sb.from('submissions').insert({
+                    id: submissionId, district: header.district || null, status: submission.status, payload: submission
+                });
+                if (error) throw error;
+
+                const totalFiles = pictures.length + videos.length + attendance.length;
+                showToast(`Submitted to Admin: ${submission.records.length} teachers, ${totalFiles} uploaded file(s).`, "success");
+            } catch (error) {
+                console.error(error);
+                showToast("Submission failed: " + (error.message || "please try again."), "error");
+            }
+        }
+
+        function updateAdminBadge() {
+            const submissions = JSON.parse(localStorage.getItem('admin_submissions') || '[]');
+            document.getElementById('admin_badge_count').textContent = submissions.length;
+        }
+
+        function openAdminSignIn() {
+            document.getElementById('adminAuthModal').classList.add('modal-active');
+            showAdminLogin();
+            setTimeout(() => document.getElementById('adminLoginEmail').focus(), 50);
+        }
+
+        function openAdminModal() {
+            // Open the admin authentication directly.
+            document.getElementById('adminAuthModal').classList.add('modal-active');
+            showAdminLogin();
+            setTimeout(() => document.getElementById('adminLoginPassword').focus(), 50);
+        }
+
+        function getCurrentUser() {
+            try { return JSON.parse(localStorage.getItem('teacher_training_current_user') || 'null'); } catch (e) { return null; }
+        }
+
+        function getAdminAccount() {
+            const defaultAccount = { email: '', password: '', recoveryPhone: '' };
+            try { return Object.assign(defaultAccount, JSON.parse(localStorage.getItem('teacher_training_admin_account') || '{}')); } catch (e) { return defaultAccount; }
+        }
+
+        function saveAdminAccount(account) { localStorage.setItem('teacher_training_admin_account', JSON.stringify(account)); }
+
+        function goBackFromAdminAuth() {
+            closeAdminAuthModal();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function closeAdminAuthModal() {
+            document.getElementById('adminAuthModal').classList.remove('modal-active');
+            document.getElementById('adminAuthError').classList.add('hidden');
+        }
+
+        function showAdminLogin() {
+            document.getElementById('adminLoginView').classList.remove('hidden');
+            document.getElementById('adminForgotView').classList.add('hidden');
+            document.getElementById('adminAuthTitle').textContent = 'Admin Sign In';
+            document.getElementById('adminAuthSubtitle').textContent = 'Authorized administrator access only';
+            document.getElementById('adminAuthError').classList.add('hidden');
+        }
+
+        function showAdminForgot() {
+            document.getElementById('adminLoginView').classList.add('hidden');
+            document.getElementById('adminForgotView').classList.remove('hidden');
+            document.getElementById('adminAuthTitle').textContent = 'Recover Admin Password';
+            document.getElementById('adminAuthSubtitle').textContent = 'Verify an OTP before changing the password';
+            document.getElementById('adminOtpNotice').classList.add('hidden');
+            document.getElementById('adminOtpVerifyBox').classList.add('hidden');
+        }
+
+        async function handleAdminLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('adminLoginEmail').value.trim().toLowerCase();
+            const password = document.getElementById('adminLoginPassword').value;
+            const err = document.getElementById('adminAuthError');
+            const { data, error } = await sb.auth.signInWithPassword({ email, password });
+            if (error || !isAdminUser(data.user)) {
+                if (!error) { await sb.auth.signOut(); localStorage.removeItem('teacher_training_current_user'); updateAuthUI(); }
+                err.textContent = 'Incorrect admin email or password.';
+                err.classList.remove('hidden');
+                return;
+            }
+            closeAdminAuthModal();
+            try { await loadCloudData(); } catch (e) { showToast('Could not load cloud data: ' + e.message, 'error'); }
+            renderAdminSubmissionsTable();
+            renderReceivedFilesList();
+            renderAdminCrossDistrictDashboard();
+            renderAdminUsersTable();
+            document.getElementById('adminModal').classList.add('modal-active');
+        }
+
+        async function requestAdminOTP() {
+            const email = document.getElementById('adminRecoveryEmail').value.trim().toLowerCase();
+            const notice = document.getElementById('adminOtpNotice');
+            notice.classList.remove('hidden');
+            if (!email.includes('@')) { notice.textContent = 'Please enter the admin email address.'; return; }
+            const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+            notice.textContent = error ? error.message : 'A password reset link has been sent to the admin email.';
+        }
+
+        function resetAdminPasswordWithOTP() {
+            showToast('Please use the reset link sent to the admin email.', 'info');
+        }
+
+        // Open the Executive Dashboard from inside Admin Panel.
+        // The Admin modal must be closed first because both dialogs use the same z-index.
+        function openAdminDashboard() {
+            closeAdminModal();
+            openDashboardModal();
+        }
+
+        function closeAdminModal() {
+            document.getElementById('adminModal').classList.remove('modal-active');
+            closeInspector();
+        }
+
+        function refreshAdminPanel() {
+            renderAdminSubmissionsTable();
+            renderReceivedFilesList();
+            renderAdminCrossDistrictDashboard();
+            renderAdminUsersTable();
+            showToast("Admin Panel refreshed successfully!", "success");
+        }
+
+        function updateAdminSync() {
+            renderAdminCrossDistrictDashboard();
+            renderAdminSubmissionsTable();
+            renderAdminUsersTable();
+            showToast("Admin records and matrices synced!", "success");
+        }
+
+        function renderAdminCrossDistrictDashboard() {
+            // Admin dashboard MUST use submitted packages only.
+            // Current main-page tableData is intentionally excluded until
+            // submitDataToAdmin() stores a completed submission.
+            const submissions = JSON.parse(localStorage.getItem('admin_submissions') || '[]');
+            let allTeachers = [];
+
+            submissions.forEach(sub => {
+                if (sub.records && Array.isArray(sub.records)) {
+                    sub.records.forEach(r => {
+                        allTeachers.push({
+                            name: r[1] || 'Unknown',
+                            designation: (r[4] || 'Unspecified').trim().toUpperCase(),
+                            district: (r[8] || sub.header?.district || 'Unspecified').trim()
+                        });
+                    });
+                }
+            });
+
+            document.getElementById('admin_dash_total_teachers').textContent = `Total: ${allTeachers.length} Teachers`;
+
+            let byDistrict = {};
+            let byDesignation = {};
+
+            allTeachers.forEach(t => {
+                byDistrict[t.district] = (byDistrict[t.district] || 0) + 1;
+                byDesignation[t.designation] = (byDesignation[t.designation] || 0) + 1;
+            });
+
+            const distTbody = document.getElementById('admin_district_tbody');
+            distTbody.innerHTML = Object.keys(byDistrict).length === 0 ? `<tr><td colspan="2" class="p-2 text-center text-gray-400">No data available</td></tr>` :
+                Object.entries(byDistrict).map(([dist, count]) => `
+                    <tr><td class="p-2 font-semibold text-slate-800">${dist}</td><td class="p-2 text-center font-bold text-blue-600">${count}</td></tr>
+                `).join('');
+
+            const desigTbody = document.getElementById('admin_designation_tbody');
+            desigTbody.innerHTML = Object.keys(byDesignation).length === 0 ? `<tr><td colspan="2" class="p-2 text-center text-gray-400">No data available</td></tr>` :
+                Object.entries(byDesignation).map(([desig, count]) => `
+                    <tr><td class="p-2 font-semibold text-slate-800">${desig}</td><td class="p-2 text-center font-bold text-emerald-600">${count}</td></tr>
+                `).join('');
+        }
+
+        function renderAdminSubmissionsTable() {
+            const submissions = JSON.parse(localStorage.getItem('admin_submissions') || '[]');
+            const tbody = document.getElementById('adminSubmissionsTableBody');
+            document.getElementById('admin_sub_count').textContent = submissions.length;
+
+            if (submissions.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-gray-400">No submissions received yet from main page.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            submissions.forEach((sub, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-3 font-mono text-gray-600">${sub.timestamp}</td>
+                    <td class="p-3 font-bold text-gray-800">${sub.header.title}<br><span class="text-xs font-normal text-blue-600">${sub.header.district}</span></td>
+                    <td class="p-3 text-center">${sub.header.venue}</td>
+                    <td class="p-3 text-center font-bold text-indigo-600">${sub.records.length}</td>
+                    <td class="p-3 text-center font-bold text-purple-600">${(sub.pictures || []).length}</td>
+                    <td class="p-3 text-center font-bold text-pink-600">${(sub.videos || []).length}</td>
+                    <td class="p-3 text-center font-bold text-amber-600">${(sub.attendance || []).length}</td>
+                    <td class="p-3 text-center">${sub.mediaQRImage ? `<img src="${sub.mediaQRImage}" class="w-16 h-16 mx-auto border rounded bg-white p-1" title="Media QR">` : '<span class="text-gray-400">—</span>'}</td>
+                    <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">${sub.status}</span></td>
+                    <td class="p-3 text-center space-x-1">
+                        <button onclick="inspectSubmission(${idx})" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded text-[10px] font-semibold">Inspect</button>
+                        <button onclick="exportSubmissionPDF(${idx})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-[10px] font-semibold">Export PDF</button>
+                        <button onclick="deleteSubmission(${idx})" class="bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 rounded text-[10px] font-semibold">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function exportSubmissionPDF(index) {
+            const submissions = JSON.parse(localStorage.getItem('admin_submissions') || '[]');
+            const sub = submissions[index];
+            if (!sub) return;
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            const info = sub.header;
+            const subTableData = sub.records || [];
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12);
+            doc.text("Teacher Training Information Report (Submitted Queue)", 14, 12);
+
+            doc.setDrawColor(0);
+            doc.setFillColor(255, 255, 255);
+            doc.rect(14, 16, 269, 28);
+
+            doc.setFontSize(8);
+            doc.text(`Training Title: ${info.title || ''}`, 17, 21);
+            doc.text(`Training Venue: ${info.venue || ''}`, 17, 27);
+            doc.text(`District: ${info.district || ''}`, 200, 27);
+            doc.text(`Center: ${info.center || ''}`, 17, 33);
+            doc.text(`Dates: ${info.date_from || ''} to ${info.date_to || ''}`, 100, 33);
+            doc.text(`Total Nominated: ${info.nom || ''}`, 17, 39);
+            doc.text(`Total Trained: ${info.trained || ''}`, 80, 39);
+
+            const tableHeaders = [
+                ["S.No", "Name", "Gender", "Father Name", "Designation", "School", "BEMIS", "UC", "District", "CNIC", "DOB", "Appt Date", "Contact", "Pre", "Post"]
+            ];
+
+            doc.autoTable({
+                startY: 48,
+                head: tableHeaders,
+                body: subTableData,
+                theme: 'grid',
+                headStyles: { fillColor: [217, 225, 242], textColor: [30, 41, 59], fontStyle: 'bold', fontSize: 7, halign: 'center' },
+                bodyStyles: { fontSize: 6, halign: 'center' },
+                margin: { left: 14, right: 14 }
+            });
+
+            doc.save(`Submitted_Report_${info.district || 'Session'}_${index + 1}.pdf`);
+            showToast("Submitted report PDF exported successfully!", "success");
+        }
+
+        function inspectSubmission(index) {
+            const submissions = JSON.parse(localStorage.getItem('admin_submissions') || '[]');
+            const sub = submissions[index];
+            if (!sub) return;
+
+            const inspector = document.getElementById('adminInspector');
+            const content = document.getElementById('inspectorContent');
+            inspector.classList.remove('hidden');
+
+            const qrPreview = sub.mediaQRImage ? `<div class="bg-white border rounded-lg p-3 inline-block"><img src="${sub.mediaQRImage}" class="w-44 h-44" alt="Media QR Code"></div>` : '<span class="text-gray-400">No QR stored</span>';
+            const qrPayloadText = sub.mediaQR || '';
+
+            let teacherRowsHtml = (sub.records || []).map(r => `
+                <tr class="hover:bg-slate-100">
+                    <td class="p-1.5 text-center font-bold">${r[0] || ''}</td>
+                    <td class="p-1.5 font-semibold">${r[1] || ''}</td>
+                    <td class="p-1.5 text-center">${r[2] || ''}</td>
+                    <td class="p-1.5 text-center">${r[4] || ''}</td>
+                    <td class="p-1.5">${r[5] || ''}</td>
+                    <td class="p-1.5 text-center font-mono">${r[6] || ''}</td>
+                    <td class="p-1.5">${r[8] || ''}</td>
+                    <td class="p-1.5 text-center font-mono">${r[9] || ''}</td>
+                    <td class="p-1.5 text-center font-mono">${r[12] || ''}</td>
+                </tr>
+            `).join('');
+
+            let picturesGalleryHtml = (sub.pictures && sub.pictures.length > 0) ? `
+                <div class="mt-3">
+                    <h6 class="font-bold text-slate-700 text-xs mb-2"><i class="fa-solid fa-images text-purple-600"></i> Received Pictures (${sub.pictures.length}):</h6>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        ${sub.pictures.map((p, mediaIndex) => `
+                            <div class="border border-slate-300 rounded overflow-hidden bg-white p-1">
+                                <img src="${p.dataUrl}" class="w-full h-24 object-cover rounded mb-1">
+                                <p class="text-[10px] text-gray-600 text-center truncate">${p.caption || 'Photo'}</p>
+                                <button type="button" onclick="deleteSubmissionMedia(${index}, 'pictures', ${mediaIndex})" class="w-full mt-1 bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded text-[10px] font-bold">
+                                    <i class="fa-solid fa-trash mr-1"></i> Delete Picture
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : `<p class="text-gray-400 italic text-[11px] mt-2">No pictures uploaded.</p>`;
+
+            let videosHtml = (sub.videos && sub.videos.length > 0) ? `
+                <div class="mt-3">
+                    <h6 class="font-bold text-slate-700 text-xs mb-2"><i class="fa-solid fa-film text-pink-600"></i> Received Videos (${sub.videos.length}):</h6>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        ${sub.videos.map((v, mediaIndex) => `
+                            <div class="border border-slate-300 rounded bg-white p-2">
+                                <video src="${v.dataUrl}" controls class="w-full h-32 rounded mb-1 bg-black"></video>
+                                <p class="text-[10px] text-gray-600 truncate">${v.name}</p>
+                                <button type="button" onclick="deleteSubmissionMedia(${index}, 'videos', ${mediaIndex})" class="w-full mt-1 bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded text-[10px] font-bold">
+                                    <i class="fa-solid fa-trash mr-1"></i> Delete Video
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : `<p class="text-gray-400 italic text-[11px] mt-2">No videos uploaded.</p>`;
+
+            let attendanceHtml = (sub.attendance && sub.attendance.length > 0) ? `
+                <div class="mt-3">
+                    <h6 class="font-bold text-slate-700 text-xs mb-2"><i class="fa-solid fa-clipboard-user text-amber-600"></i> Received Attendance Sheets (${sub.attendance.length}):</h6>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        ${sub.attendance.map((a, mediaIndex) => `
+                            <div class="border border-slate-300 rounded bg-white p-2 flex items-center justify-between gap-2">
+                                <div class="truncate text-slate-800 text-[11px]">
+                                    <i class="fa-solid fa-file text-amber-500 mr-1"></i> ${a.name}
+                                </div>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <a href="${a.dataUrl}" download="${a.name}" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded text-[10px] font-bold">Download</a>
+                                    <button type="button" onclick="deleteSubmissionMedia(${index}, 'attendance', ${mediaIndex})" class="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded text-[10px] font-bold">
+                                        <i class="fa-solid fa-trash mr-1"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : `<p class="text-gray-400 italic text-[11px] mt-2">No attendance sheets uploaded.</p>`;
+
+            content.innerHTML = `
+                <div class="bg-white p-3 rounded-lg border border-slate-200 space-y-2">
+                    <h6 class="font-bold text-slate-800 text-xs border-b pb-1 text-rose-600"><i class="fa-solid fa-heading"></i> Header Details</h6>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <div><strong>Title:</strong> ${sub.header.title}</div>
+                        <div><strong>Venue:</strong> ${sub.header.venue}</div>
+                        <div><strong>District:</strong> ${sub.header.district}</div>
+                        <div><strong>Dates:</strong> ${sub.header.date_from} to ${sub.header.date_to}</div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-3 rounded-lg border border-slate-200 space-y-2">
+                    <h6 class="font-bold text-slate-800 text-xs border-b pb-1 text-emerald-600"><i class="fa-solid fa-users"></i> Teacher Directory</h6>
+                    <div class="overflow-x-auto max-h-48 border border-slate-200 rounded">
+                        <table class="w-full text-left text-[11px]">
+                            <thead class="bg-slate-100 font-bold border-b">
+                                <tr>
+                                    <th class="p-1.5 text-center">S.No</th>
+                                    <th class="p-1.5">Name</th>
+                                    <th class="p-1.5 text-center">Gender</th>
+                                    <th class="p-1.5 text-center">Designation</th>
+                                    <th class="p-1.5">School</th>
+                                    <th class="p-1.5 text-center">BEMIS Code</th>
+                                    <th class="p-1.5">District</th>
+                                    <th class="p-1.5 text-center">CNIC</th>
+                                    <th class="p-1.5 text-center">Contact No</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                ${teacherRowsHtml || `<tr><td colspan="9" class="p-2 text-center text-gray-400">No teachers found</td></tr>`}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-white p-3 rounded-lg border border-slate-200">
+                    ${picturesGalleryHtml}
+                    ${videosHtml}
+                    ${attendanceHtml}
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button onclick="loadSubmissionIntoActive(${index})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-semibold">Load into Active Session</button>
+                </div>
+            `;
+        }
+
+        function closeInspector() {
+            document.getElementById('adminInspector').classList.add('hidden');
+        }
+
+        function loadSubmissionIntoActive(index) {
+            const submissions = JSON.parse(localStorage.getItem('admin_submissions') || '[]');
+            const sub = submissions[index];
+            if (!sub) return;
+
+            document.getElementById('hdr_title').value = sub.header.title || '';
+            document.getElementById('hdr_venue').value = sub.header.venue || '';
+            document.getElementById('hdr_district').value = sub.header.district || '';
+            if (sub.header.center) document.getElementById('hdr_center').value = sub.header.center;
+            document.getElementById('hdr_date_from').value = sub.header.date_from || '';
+            document.getElementById('hdr_date_to').value = sub.header.date_to || '';
+            document.getElementById('hdr_nom').value = sub.header.nom || '';
+            document.getElementById('hdr_trained').value = sub.header.trained || '';
+            document.getElementById('hdr_trainers').value = sub.header.trainers || '';
+
+            tableData = sub.records || [];
+            trainingPictures = sub.pictures || [];
+            trainingVideos = sub.videos || [];
+            attendanceSheets = sub.attendance || [];
+
+            renderTable();
+            updateStatistics();
+            renderGallery();
+            renderVideosGallery();
+            renderAttendanceList();
+            closeAdminModal();
+            showToast("Submission successfully loaded into main page active session!", "success");
+        }
+
+        function refreshSubmissionMediaQR(submission) {
+            const submissionId = submission.id || ('SUB-' + Date.now());
+            const payload = {
+                app: 'TTIS',
+                version: 1,
+                submissionId: submissionId,
+                createdAt: submission.timestamp || new Date().toISOString(),
+                media: {
+                    pictures: (submission.pictures || []).map(x => ({ id: x.id, name: x.caption || 'Picture' })),
+                    videos: (submission.videos || []).map(x => ({ id: x.id, name: x.name || 'Video' }))
+                }
+            };
+            submission.mediaQR = JSON.stringify(payload);
+            try {
+                submission.mediaQRImage = createSubmissionQRDataURL(submission);
+            } catch (e) {
+                console.warn('Could not refresh media QR image:', e);
+            }
+            submission.mediaSummary = {
+                pictures: (submission.pictures || []).length,
+                videos: (submission.videos || []).length,
+                attendance: (submission.attendance || []).length
+            };
+        }
+
+        function deleteSubmissionMedia(submissionIndex, mediaType, mediaIndex) {
+            const submissions = JSON.parse(localStorage.getItem('admin_submissions') || '[]');
+            const sub = submissions[submissionIndex];
+            if (!sub || !Array.isArray(sub[mediaType]) || !sub[mediaType][mediaIndex]) return;
+
+            const item = sub[mediaType][mediaIndex];
+            const typeNames = {
+                pictures: 'picture',
+                videos: 'video',
+                attendance: 'attendance sheet'
+            };
+            const label = mediaType === 'attendance'
+                ? (item.name || 'attendance sheet')
+                : (item.caption || item.name || typeNames[mediaType]);
+
+            if (!confirm(`Delete this ${typeNames[mediaType]} from the submitted report?\n\n${label}`)) return;
+
+            sub[mediaType].splice(mediaIndex, 1);
+            refreshSubmissionMediaQR(sub);
+            submissions[submissionIndex] = sub;
+
+            try {
+                localStorage.setItem('admin_submissions', JSON.stringify(submissions));
+            } catch (error) {
+                showToast('Could not save the deletion because browser storage is full.', 'error');
+                return;
+            }
+
+            sb.from('submissions').update({ payload: sub }).eq('id', sub.id).then(({ error }) => {
+                if (error) showToast('Cloud update failed: ' + error.message, 'error');
+            });
+            renderAdminSubmissionsTable();
+            renderAdminCrossDistrictDashboard();
+            updateAdminBadge();
+            inspectSubmission(submissionIndex);
+            showToast(`${typeNames[mediaType].replace(/^./, c => c.toUpperCase())} deleted from the submitted report.`, 'success');
+        }
+
+        function deleteSubmission(index) {
+            let submissions = JSON.parse(localStorage.getItem('admin_submissions') || '[]');
+            const removed = submissions.splice(index, 1)[0];
+            if (removed) sb.from('submissions').delete().eq('id', removed.id).then(({ error }) => {
+                if (error) showToast('Cloud delete failed: ' + error.message, 'error');
+            });
+            localStorage.setItem('admin_submissions', JSON.stringify(submissions));
+            renderAdminSubmissionsTable();
+            renderAdminCrossDistrictDashboard();
+            updateAdminBadge();
+            closeInspector();
+            showToast("Submission deleted.", "info");
+        }
+
+        function clearAllSubmissions() {
+            if (!confirm("Are you sure you want to clear all admin submissions?")) return;
+            localStorage.removeItem('admin_submissions');
+            renderAdminSubmissionsTable();
+            renderAdminCrossDistrictDashboard();
+            updateAdminBadge();
+            closeInspector();
+            showToast("All submissions cleared.", "info");
+        }
+
+        function adminReceivePDF(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            receivedAdminFiles.push({
+                name: file.name,
+                type: 'PDF',
+                date: new Date().toLocaleString(),
+                fileObj: file
+            });
+            renderReceivedFilesList();
+            showToast(`PDF File "${file.name}" received in Admin Panel!`, "success");
+            event.target.value = '';
+        }
+
+        function adminReceiveWord(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            receivedAdminFiles.push({
+                name: file.name,
+                type: 'Word',
+                date: new Date().toLocaleString(),
+                fileObj: file
+            });
+            renderReceivedFilesList();
+            showToast(`Word File "${file.name}" received in Admin Panel!`, "success");
+            event.target.value = '';
+        }
+
+        function renderReceivedFilesList() {
+            const container = document.getElementById('adminReceivedFilesList');
+            if (receivedAdminFiles.length === 0) {
+                container.innerHTML = `<p class="text-gray-400 col-span-full text-center py-2">No user PDF or Word documents received yet.</p>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            receivedAdminFiles.forEach((f, idx) => {
+                const item = document.createElement('div');
+                item.className = "bg-white p-2.5 rounded border border-slate-200 flex items-center justify-between shadow-sm";
+                const isPdf = f.type === 'PDF';
+                item.innerHTML = `
+                    <div class="flex items-center gap-2 truncate">
+                        <i class="fa-solid ${isPdf ? 'fa-file-pdf text-rose-600' : 'fa-file-word text-blue-600'} text-base"></i>
+                        <div class="truncate">
+                            <strong class="block truncate text-slate-800">${f.name}</strong>
+                            <span class="text-[10px] text-gray-500">${f.type} • Received: ${f.date}</span>
+                        </div>
+                    </div>
+                    <button onclick="downloadReceivedFile(${idx})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded text-[10px] font-bold">Download</button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function downloadReceivedFile(index) {
+            const fileItem = receivedAdminFiles[index];
+            if (!fileItem) return;
+
+            const url = URL.createObjectURL(fileItem.fileObj);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileItem.name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        function adminExportPDF() {
+            const submissions = JSON.parse(localStorage.getItem('admin_submissions') || '[]');
+            if (!submissions.length) {
+                showToast("There are no Admin submissions to export.", "warning");
+                return;
+            }
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(13);
+                doc.text("Administrator Submitted Training Reports", 14, 12);
+
+                const rows = submissions.map(sub => [
+                    sub.timestamp || '',
+                    sub.header?.title || '',
+                    sub.header?.district || '',
+                    sub.header?.venue || '',
+                    (sub.records || []).length,
+                    (sub.pictures || []).length,
+                    (sub.videos || []).length,
+                    (sub.attendance || []).length,
+                    sub.status || 'Pending Review'
+                ]);
+
+                doc.autoTable({
+                    startY: 18,
+                    head: [["Timestamp", "Training Title", "District", "Venue", "Teachers", "Pictures", "Videos", "Attendance", "Status"]],
+                    body: rows,
+                    theme: 'grid',
+                    headStyles: { fillColor: [225, 29, 72], textColor: [255,255,255], fontStyle: 'bold', fontSize: 7 },
+                    bodyStyles: { fontSize: 6 },
+                    margin: { left: 10, right: 10 }
+                });
+
+                doc.save("Admin_Submitted_Training_Reports.pdf");
+                showToast("Admin submission PDF exported successfully.", "success");
+            } catch (error) {
+                console.error(error);
+                showToast("Could not export Admin submission PDF.", "error");
+            }
+        }
+
+        function adminExportWordLandscape() {
+            const submissions = JSON.parse(localStorage.getItem('admin_submissions') || '[]');
+            if (!submissions.length) {
+                showToast("There are no Admin submissions to export.", "warning");
+                return;
+            }
+
+            const rows = submissions.map(sub => `
+                <tr>
+                    <td>${sub.timestamp || ''}</td>
+                    <td>${sub.header?.title || ''}</td>
+                    <td>${sub.header?.district || ''}</td>
+                    <td>${sub.header?.venue || ''}</td>
+                    <td>${(sub.records || []).length}</td>
+                    <td>${(sub.pictures || []).length}</td>
+                    <td>${(sub.videos || []).length}</td>
+                    <td>${(sub.attendance || []).length}</td>
+                    <td>${sub.status || 'Pending Review'}</td>
+                </tr>`).join('');
+
+            const html = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office'
+                      xmlns:w='urn:schemas-microsoft-com:office:word'
+                      xmlns='http://www.w3.org/TR/REC-html40'>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        @page Section1 { size: 11.7in 8.3in; margin: 0.5in; }
+                        div.Section1 { page: Section1; }
+                        body { font-family: Arial, sans-serif; font-size: 9pt; }
+                        h2 { text-align: center; }
+                        table { border-collapse: collapse; width: 100%; }
+                        th, td { border: 1px solid #000; padding: 5px; font-size: 8pt; text-align: center; }
+                        th { background: #e11d48; color: #fff; }
+                    </style>
+                </head>
+                <body>
+                    <div class="Section1">
+                        <h2>Administrator Submitted Training Reports</h2>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th><th>Training Title</th><th>District</th><th>Venue</th>
+                                    <th>Teachers</th><th>Pictures</th><th>Videos</th><th>Attendance</th><th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </body>
+                </html>`;
+
+            const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Admin_Submitted_Training_Reports.doc';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            showToast("Admin submission Word document exported successfully.", "success");
+        }
+
+        function exportToWordLandscape() {
+            const info = getHeaderData();
+            const headers = [
+                "S. No", "Name", "Gender", "Father Name", "Designation", "School", "BEMIS Code",
+                "Union Council", "District", "CNIC", "DOB", "Appt Date", "Contact", "Pre Test", "Post Test"
+            ];
+
+            let htmlContent = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head><title>Teacher Training Report Landscape</title>
+                <style>
+                    @page {
+                        size: A4 landscape;
+                        margin: 1cm;
+                    }
+                    body { font-family: Arial, sans-serif; font-size: 10pt; }
+                    table { border-collapse: collapse; width: 100%; margin-bottom: 15px; }
+                    th, td { border: 1px solid #000; padding: 5px; font-size: 8pt; text-align: center; }
+                    th { background-color: #d9e1f2; }
+                    .header-box { border: 1px solid #000; padding: 10px; margin-bottom: 15px; }
+                </style>
+                </head>
+                <body>
+                    <h2>Teacher Training Information Report (Landscape)</h2>
+                    <div class="header-box">
+                        <p><strong>Training Title:</strong> ${info.title}</p>
+                        <p><strong>Venue:</strong> ${info.venue} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>District:</strong> ${info.district}</p>
+                        <p><strong>Center:</strong> ${info.center} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Dates:</strong> ${info.date_from} to ${info.date_to}</p>
+                        <p><strong>Nominated:</strong> ${info.nom} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Trained:</strong> ${info.trained}</p>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                        </thead>
+                        <tbody>
+                            ${tableData.map(r => `<tr>${r.map(c => `<td>${c || ''}</td>`).join('')}</tr>`).join('')}
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+            const blob = new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Admin_Teacher_Training_Landscape_${info.district || 'Session'}.doc`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            showToast("Landscape Word Document exported from Admin Panel!", "success");
+        }
+
+        function connectToServer() {
+            const serverUrl = prompt("Enter Server Endpoint URL:", "https://api.yourserver.com/training-sync");
+            if (!serverUrl) return;
+
+            showToast("Connecting to server...", "info");
+            setTimeout(() => {
+                showToast(`Successfully connected to: ${serverUrl}`, "success");
+            }, 1000);
+        }
+
+        function openDashboardModal() {
+            updateDashboardMetrics();
+            renderDashboardTeachersTable();
+            document.getElementById('dashboardModal').classList.add('modal-active');
+        }
+
+        function closeDashboardModal() {
+            document.getElementById('dashboardModal').classList.remove('modal-active');
+        }
+
+        function updateDashboardMetrics() {
+            let preSum = 0, preCount = 0;
+            let postSum = 0, postCount = 0;
+
+            tableData.forEach(r => {
+                const pre = parseFloat(r[13]);
+                const post = parseFloat(r[14]);
+                if (!isNaN(pre)) { preSum += pre; preCount++; }
+                if (!isNaN(post)) { postSum += post; postCount++; }
+            });
+
+            const avgPre = preCount > 0 ? (preSum / preCount).toFixed(1) : '0';
+            const avgPost = postCount > 0 ? (postSum / postCount).toFixed(1) : '0';
+            const gain = (parseFloat(avgPost) - parseFloat(avgPre)).toFixed(1);
+
+            document.getElementById('dash_total').textContent = tableData.length;
+            document.getElementById('dash_pre').textContent = `${avgPre} / 20`;
+            document.getElementById('dash_post').textContent = `${avgPost} / 20`;
+            document.getElementById('dash_gain').textContent = `${gain >= 0 ? '+' : ''}${gain} pts`;
+        }
+
+        function renderDashboardTeachersTable() {
+            const tbody = document.getElementById('dash_teachers_tbody');
+            if (!tableData || tableData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-purple-300">No teacher records available.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = tableData.map(r => `
+                <tr class="hover:bg-purple-900/40 transition-colors">
+                    <td class="p-2 text-center font-bold text-pink-300">${r[0] || ''}</td>
+                    <td class="p-2 font-semibold text-white">${r[1] || ''}</td>
+                    <td class="p-2 text-center text-purple-200">${r[2] || ''}</td>
+                    <td class="p-2 text-cyan-200">${r[4] || ''}</td>
+                    <td class="p-2 text-purple-200">${r[5] || ''}</td>
+                    <td class="p-2 text-center font-mono text-amber-300">${r[6] || ''}</td>
+                    <td class="p-2 text-purple-200">${r[8] || ''}</td>
+                    <td class="p-2 text-center font-mono text-purple-300">${r[9] || ''}</td>
+                    <td class="p-2 text-center font-mono text-emerald-300">${r[12] || ''}</td>
+                </tr>
+            `).join('');
+        }
+
+        function insertTrainingPictures(event) {
+            sendPicturesFromToolbar(event);
+        }
+
+        function updatePictureCaption(index, newCaption) {
+            if (trainingPictures[index]) {
+                trainingPictures[index].caption = newCaption;
+            }
+        }
+
+        function removePicture(index) {
+            trainingPictures.splice(index, 1);
+            renderGallery();
+            showToast("Picture removed.", "info");
+        }
+
+        function clearAllPictures() {
+            if (trainingPictures.length === 0) return;
+            trainingPictures = [];
+            renderGallery();
+            showToast("All training pictures removed.", "info");
+        }
+
+        function renderGallery() {
+            const gallery = document.getElementById('picturesGallery');
+            const emptyMsg = document.getElementById('emptyGalleryMsg');
+
+            if (trainingPictures.length === 0) {
+                gallery.innerHTML = '';
+                gallery.appendChild(emptyMsg);
+                emptyMsg.style.display = 'block';
+                return;
+            }
+
+            gallery.innerHTML = '';
+            trainingPictures.forEach((pic, idx) => {
+                const card = document.createElement('div');
+                card.className = "group relative bg-slate-50 border border-gray-200 rounded-lg overflow-hidden shadow-sm flex flex-col justify-between transition-all hover:shadow-md";
+
+                card.innerHTML = `
+                    <div class="relative w-full h-40 bg-slate-900 flex items-center justify-center overflow-hidden">
+                        <img src="${pic.dataUrl}" alt="Training Photo" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                        <button onclick="removePicture(${idx})" class="no-print absolute top-2 right-2 bg-rose-600 text-white h-7 w-7 rounded-full flex items-center justify-center shadow opacity-85 hover:opacity-100 transition-opacity" title="Delete Image">
+                            <i class="fa-solid fa-xmark text-xs"></i>
+                        </button>
+                    </div>
+                    <div class="p-2 border-t border-gray-200 bg-white">
+                        <input type="text" value="${pic.caption}" onchange="updatePictureCaption(${idx}, this.value)" class="w-full text-xs text-gray-700 bg-transparent border border-transparent hover:border-gray-300 focus:border-blue-500 focus:bg-white rounded px-1.5 py-1 outline-none font-medium text-center no-print" placeholder="Enter photo caption...">
+                    </div>
+                `;
+                gallery.appendChild(card);
+            });
+        }
+
+        function removeVideo(index) {
+            trainingVideos.splice(index, 1);
+            renderVideosGallery();
+            showToast("Video removed.", "info");
+        }
+
+        function renderVideosGallery() {
+            const gallery = document.getElementById('videosGallery');
+            const emptyMsg = document.getElementById('emptyVideosMsg');
+
+            if (trainingVideos.length === 0) {
+                gallery.innerHTML = '';
+                gallery.appendChild(emptyMsg);
+                emptyMsg.style.display = 'block';
+                return;
+            }
+
+            gallery.innerHTML = '';
+            trainingVideos.forEach((vid, idx) => {
+                const card = document.createElement('div');
+                card.className = "relative bg-slate-900 border border-gray-200 rounded-lg overflow-hidden shadow-sm p-2";
+
+                card.innerHTML = `
+                    <video src="${vid.dataUrl}" controls class="w-full h-40 object-cover rounded mb-2 bg-black"></video>
+                    <div class="flex items-center justify-between text-xs text-white">
+                        <span class="truncate max-w-[180px]">${vid.name}</span>
+                        <button onclick="removeVideo(${idx})" class="bg-rose-600 text-white h-6 w-6 rounded-full flex items-center justify-center hover:bg-rose-700">
+                            <i class="fa-solid fa-xmark text-xs"></i>
+                        </button>
+                    </div>
+                `;
+                gallery.appendChild(card);
+            });
+        }
+
+        function removeAttendanceSheet(index) {
+            attendanceSheets.splice(index, 1);
+            renderAttendanceList();
+            showToast("Attendance sheet removed.", "info");
+        }
+
+        function renderAttendanceList() {
+            const list = document.getElementById('attendanceList');
+            const emptyMsg = document.getElementById('emptyAttendanceMsg');
+
+            if (attendanceSheets.length === 0) {
+                list.innerHTML = '';
+                list.appendChild(emptyMsg);
+                emptyMsg.style.display = 'block';
+                return;
+            }
+
+            list.innerHTML = '';
+            attendanceSheets.forEach((sheet, idx) => {
+                const item = document.createElement('div');
+                item.className = "bg-slate-50 border border-gray-200 p-3 rounded-lg flex items-center justify-between text-xs shadow-sm";
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-2 truncate">
+                        <i class="fa-solid fa-file-pdf text-rose-600 text-lg"></i>
+                        <span class="font-medium text-gray-800 truncate">${sheet.name}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <a href="${sheet.dataUrl}" download="${sheet.name}" class="bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded text-[11px] font-semibold">Download</a>
+                        <button onclick="removeAttendanceSheet(${idx})" class="text-rose-600 hover:text-rose-800 font-bold px-1">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function getFormValues() {
+            return fields.map(f => document.getElementById(`f_${f}`).value.trim());
+        }
+
+        function setFormValues(vals) {
+            fields.forEach((f, idx) => {
+                document.getElementById(`f_${f}`).value = vals[idx] || '';
+            });
+        }
+
+        function clearEntries() {
+            fields.forEach(f => {
+                document.getElementById(`f_${f}`).value = '';
+            });
+            selectedRowIndex = null;
+            document.getElementById('form_mode_badge').textContent = 'Mode: New Record';
+            document.getElementById('form_mode_badge').className = 'text-xs font-semibold px-2.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200';
+            renderTable();
+        }
+
+        function addRecord() {
+            const vals = getFormValues();
+            if (!vals[0]) {
+                showToast("Please provide S. No at minimum.", "warning");
+                return;
+            }
+
+            tableData.push(vals);
+            renderTable();
+            clearEntries();
+            updateStatistics();
+            showToast("Record added successfully!", "success");
+        }
+
+        function updateRecord() {
+            if (selectedRowIndex === null) {
+                showToast("Please select a record from table to update.", "warning");
+                return;
+            }
+
+            const vals = getFormValues();
+            if (!vals[0]) {
+                showToast("S. No cannot be left empty.", "warning");
+                return;
+            }
+
+            tableData[selectedRowIndex] = vals;
+            renderTable();
+            clearEntries();
+            updateStatistics();
+            showToast("Record updated successfully!", "success");
+        }
+
+        function deleteRecord() {
+            if (selectedRowIndex === null) {
+                showToast("Please select a record to delete.", "warning");
+                return;
+            }
+
+            tableData.splice(selectedRowIndex, 1);
+            renderTable();
+            clearEntries();
+            updateStatistics();
+            showToast("Record deleted.", "info");
+        }
+
+        function selectRow(index) {
+            selectedRowIndex = index;
+            setFormValues(tableData[index]);
+            document.getElementById('form_mode_badge').textContent = `Editing Row #${index + 1}`;
+            document.getElementById('form_mode_badge').className = 'text-xs font-semibold px-2.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200';
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            document.getElementById('record_count').textContent = tableData.length;
+
+            tableData.forEach((row, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = `hover:bg-blue-50/50 cursor-pointer transition-colors ${selectedRowIndex === idx ? 'selected-row font-medium' : (idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50')}`;
+                tr.onclick = () => selectRow(idx);
+
+                tr.innerHTML = `
+                    <td class="p-2.5 text-center border-r border-gray-200 font-bold">${row[0] || ''}</td>
+                    <td class="p-2.5 border-r border-gray-200 font-semibold text-gray-900">${row[1] || ''}</td>
+                    <td class="p-2.5 text-center border-r border-gray-200">${row[2] || ''}</td>
+                    <td class="p-2.5 border-r border-gray-200">${row[3] || ''}</td>
+                    <td class="p-2.5 text-center border-r border-gray-200">${row[4] || ''}</td>
+                    <td class="p-2.5 border-r border-gray-200">${row[5] || ''}</td>
+                    <td class="p-2.5 text-center border-r border-gray-200 font-mono">${row[6] || ''}</td>
+                    <td class="p-2.5 border-r border-gray-200">${row[7] || ''}</td>
+                    <td class="p-2.5 border-r border-gray-200">${row[8] || ''}</td>
+                    <td class="p-2.5 text-center border-r border-gray-200 font-mono">${row[9] || ''}</td>
+                    <td class="p-2.5 text-center border-r border-gray-200">${row[10] || ''}</td>
+                    <td class="p-2.5 text-center border-r border-gray-200">${row[11] || ''}</td>
+                    <td class="p-2.5 text-center border-r border-gray-200 font-mono">${row[12] || ''}</td>
+                    <td class="p-2.5 text-center border-r border-gray-200 font-bold text-amber-700 bg-amber-50/30">${row[13] || '-'}</td>
+                    <td class="p-2.5 text-center font-bold text-emerald-700 bg-emerald-50/30">${row[14] || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateStatistics() {
+            let preSum = 0, preCount = 0;
+            let postSum = 0, postCount = 0;
+
+            tableData.forEach(r => {
+                const pre = parseFloat(r[13]);
+                const post = parseFloat(r[14]);
+                if (!isNaN(pre)) { preSum += pre; preCount++; }
+                if (!isNaN(post)) { postSum += post; postCount++; }
+            });
+
+            const avgPre = preCount > 0 ? (preSum / preCount).toFixed(1) : '0';
+            const avgPost = postCount > 0 ? (postSum / postCount).toFixed(1) : '0';
+            const gain = (parseFloat(avgPost) - parseFloat(avgPre)).toFixed(1);
+
+            document.getElementById('stat_avg_pre').textContent = `${avgPre} / 20`;
+            document.getElementById('stat_avg_post').textContent = `${avgPost} / 20`;
+            document.getElementById('stat_gain').textContent = `${gain >= 0 ? '+' : ''}${gain} pts`;
+            
+            const nominated = parseInt(document.getElementById('hdr_nom').value) || tableData.length;
+            const percentage = nominated > 0 ? Math.round((tableData.length / nominated) * 100) : 100;
+            document.getElementById('stat_completion').textContent = `${percentage}%`;
+        }
+
+        function getHeaderData() {
+            return {
+                title: document.getElementById('hdr_title').value,
+                venue: document.getElementById('hdr_venue').value,
+                district: document.getElementById('hdr_district').value,
+                center: document.getElementById('hdr_center').value,
+                date_from: document.getElementById('hdr_date_from').value,
+                date_to: document.getElementById('hdr_date_to').value,
+                nom: document.getElementById('hdr_nom').value,
+                trained: document.getElementById('hdr_trained').value,
+                trainers: document.getElementById('hdr_trainers').value
+            };
+        }
+
+        function generatePDFBlob() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            const info = getHeaderData();
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12);
+            doc.text("Teacher Training Information Report", 14, 12);
+
+            doc.setDrawColor(0);
+            doc.setFillColor(255, 255, 255);
+            doc.rect(14, 16, 269, 28);
+
+            doc.setFontSize(8);
+            doc.text(`Training Title: ${info.title}`, 17, 21);
+            doc.text(`Training Venue: ${info.venue}`, 17, 27);
+            doc.text(`District: ${info.district}`, 200, 27);
+            doc.text(`Center: ${info.center}`, 17, 33);
+            doc.text(`Dates: ${info.date_from} to ${info.date_to}`, 100, 33);
+            doc.text(`Total Nominated: ${info.nom}`, 17, 39);
+            doc.text(`Total Trained: ${info.trained}`, 80, 39);
+
+            const tableHeaders = [
+                ["S.No", "Name", "Gender", "Father Name", "Designation", "School", "BEMIS", "UC", "District", "CNIC", "DOB", "Appt Date", "Contact", "Pre", "Post"]
+            ];
+
+            doc.autoTable({
+                startY: 48,
+                head: tableHeaders,
+                body: tableData,
+                theme: 'grid',
+                headStyles: { fillColor: [217, 225, 242], textColor: [30, 41, 59], fontStyle: 'bold', fontSize: 7, halign: 'center' },
+                bodyStyles: { fontSize: 6, halign: 'center' },
+                margin: { left: 14, right: 14 }
+            });
+
+            return doc.output('blob');
+        }
+
+        function exportToPDF() {
+            const pdfBlob = generatePDFBlob();
+            const info = getHeaderData();
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Teacher_Training_Report_${info.district || 'Session'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            showToast("PDF exported successfully!", "success");
+        }
+
+        function exportToExcel() {
+            const info = getHeaderData();
+            const headers = ["S. No", "Name", "Gender", "Father Name", "Designation", "School", "BEMIS Code", "Union Council", "District", "CNIC", "DOB", "Appt Date", "Contact", "Pre Test", "Post Test"];
+            
+            const wsData = [
+                ["Teacher Training Information Report"],
+                ["Title:", info.title],
+                ["Venue:", info.venue, "District:", info.district],
+                ["Dates:", `${info.date_from} to ${info.date_to}`, "Center:", info.center],
+                [],
+                headers,
+                ...tableData
+            ];
+
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Training Data");
+            XLSX.writeFile(wb, `Teacher_Training_Report_${info.district || 'Session'}.xlsx`);
+            showToast("Excel spreadsheet exported!", "success");
+        }
+
+        function generateWordBlob() {
+            const info = getHeaderData();
+            const headers = [
+                "S. No", "Name", "Gender", "Father Name", "Designation", "School", "BEMIS Code",
+                "Union Council", "District", "CNIC", "DOB", "Appt Date", "Contact", "Pre Test", "Post Test"
+            ];
+
+            let htmlContent = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head><title>Teacher Training Report</title>
+                <style>
+                    body { font-family: Arial, sans-serif; font-size: 10pt; }
+                    table { border-collapse: collapse; width: 100%; margin-bottom: 15px; }
+                    th, td { border: 1px solid #000; padding: 5px; font-size: 8pt; text-align: center; }
+                    th { background-color: #d9e1f2; }
+                    .header-box { border: 1px solid #000; padding: 10px; margin-bottom: 15px; }
+                </style>
+                </head>
+                <body>
+                    <h2>Teacher Training Information Report</h2>
+                    <div class="header-box">
+                        <p><strong>Training Title:</strong> ${info.title}</p>
+                        <p><strong>Venue:</strong> ${info.venue} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>District:</strong> ${info.district}</p>
+                        <p><strong>Center:</strong> ${info.center} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Dates:</strong> ${info.date_from} to ${info.date_to}</p>
+                        <p><strong>Nominated:</strong> ${info.nom} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>Trained:</strong> ${info.trained}</p>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                        </thead>
+                        <tbody>
+                            ${tableData.map(r => `<tr>${r.map(c => `<td>${c || ''}</td>`).join('')}</tr>`).join('')}
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+            return new Blob(['\ufeff', htmlContent], { type: 'application/msword' });
+        }
+
+        function exportToWord() {
+            const wordBlob = generateWordBlob();
+            const info = getHeaderData();
+            const url = URL.createObjectURL(wordBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Teacher_Training_Report_${info.district || 'Session'}.doc`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            showToast("Word document exported!", "success");
+        }
+
+        async function sharePDFViaWhatsApp() {
+            const info = getHeaderData();
+            const fileName = `Teacher_Training_Report_${info.district || 'Session'}.pdf`;
+            const pdfBlob = generatePDFBlob();
+            const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+            if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+                try {
+                    await navigator.share({
+                        files: [pdfFile],
+                        title: 'Teacher Training Report (PDF)',
+                        text: `Teacher Training Report PDF - ${info.district || 'District'}`
+                    });
+                    showToast("Shared PDF file successfully!", "success");
+                    return;
+                } catch (err) {
+                    if (err.name !== 'AbortError') console.error(err);
+                    return;
+                }
+            }
+
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        async function shareWordViaWhatsApp() {
+            const info = getHeaderData();
+            const fileName = `Teacher_Training_Report_${info.district || 'Session'}.doc`;
+            const wordBlob = generateWordBlob();
+            const wordFile = new File([wordBlob], fileName, { type: 'application/msword' });
+
+            if (navigator.canShare && navigator.canShare({ files: [wordFile] })) {
+                try {
+                    await navigator.share({
+                        files: [wordFile],
+                        title: 'Teacher Training Report (Word Document)',
+                        text: `Teacher Training Report Word Document - ${info.district || 'District'}`
+                    });
+                    showToast("Shared Word document file successfully!", "success");
+                    return;
+                } catch (err) {
+                    if (err.name !== 'AbortError') console.error(err);
+                    return;
+                }
+            }
+
+            const url = URL.createObjectURL(wordBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        function sendToGmail() {
+            const info = getHeaderData();
+            const subject = encodeURIComponent(`Teacher Training Summary Report - ${info.district || 'District'}`);
+            let bodyText = `TEACHER TRAINING INFORMATION REPORT\nTraining Title: ${info.title}\nVenue: ${info.venue}\nDistrict: ${info.district}\n`;
+            const body = encodeURIComponent(bodyText);
+            const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`;
+            window.open(gmailUrl, '_blank');
+            showToast("Opening Gmail Compose window...", "success");
+        }
+
+        function saveData() {
+            performAutoSave(false);
+        }
+
+        function loadPreviousSavedData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.header) {
+                        document.getElementById('hdr_title').value = data.header.title || '';
+                        document.getElementById('hdr_venue').value = data.header.venue || '';
+                        document.getElementById('hdr_district').value = data.header.district || '';
+                        if (data.header.center) document.getElementById('hdr_center').value = data.header.center;
+                        document.getElementById('hdr_date_from').value = data.header.date_from || '';
+                        document.getElementById('hdr_date_to').value = data.header.date_to || '';
+                        document.getElementById('hdr_nom').value = data.header.nom || '';
+                        document.getElementById('hdr_trained').value = data.header.trained || '';
+                        document.getElementById('hdr_trainers').value = data.header.trainers || '';
+                    }
+                    if (data.records) tableData = data.records;
+                    if (data.pictures) trainingPictures = data.pictures;
+                    if (data.videos) trainingVideos = data.videos;
+                    if (data.attendance) attendanceSheets = data.attendance;
+
+                    renderTable();
+                    updateStatistics();
+                    renderGallery();
+                    renderVideosGallery();
+                    renderAttendanceList();
+                    showToast("Previous data successfully loaded!", "success");
+                } catch (err) {
+                    showToast("Invalid JSON data file format.", "error");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function confirmResetNextTraining() {
+            document.getElementById('confirmModal').classList.add('modal-active');
+        }
+
+        function closeModal() {
+            document.getElementById('confirmModal').classList.remove('modal-active');
+        }
+
+        function executeResetNextTraining() {
+            localStorage.removeItem('teacher_training_autosave_data');
+            localStorage.removeItem('admin_submissions');
+            tableData = [];
+            trainingPictures = [];
+            trainingVideos = [];
+            attendanceSheets = [];
+            clearEntries();
+            renderGallery();
+            renderVideosGallery();
+            renderAttendanceList();
+            updateStatistics();
+            closeModal();
+            showToast("System reset for next training session.", "success");
+        }
+    </script>
+</body>
+</html>
